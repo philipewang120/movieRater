@@ -5,26 +5,30 @@ import bodyParser from "body-parser";
 import axios from "axios";
 import bcrypt from "bcryptjs";
 import passport from "passport";
-import { Strategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth20";
 import FacebookStrategy from "passport-facebook";
 import GitHubStrategy from "passport-github2";
 import session from "express-session";
 import cors from "cors";
+import { Strategy as LocalStrategy } from "passport-local";
 
 dotenv.config();
 
 const app = express();
+
 const port = process.env.PORT || 3000;
 const saltRounds = 10;
+
 const allowedOrigins = [
   "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app",
 ];
 
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: true,
   })
 );
 
@@ -37,28 +41,22 @@ app.use(
     secret: process.env.SECRET_KEY,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
-  maxAge: 1000 * 60 * 60,
-  httpOnly: true,
-  secure: true,
-  sameSite: "none"
-}
+      maxAge: 1000 * 60 * 60,
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    },
   })
 );
-app.set("trust proxy", 1);
 
-const db = new pg.Client({
+const db = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },
 });
-new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-db.connect();
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -312,7 +310,7 @@ app.get(
     scope: ["profile", "email"],
   }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
+    res.redirect("/home");
   }
 );
 
@@ -322,7 +320,7 @@ app.get("/auth/facebook/callback",
     failureRedirect: "/login",
   }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
+    res.redirect("/home");
   }
 );
  app.get("/auth/github/mymovies",
@@ -330,7 +328,7 @@ app.get("/auth/facebook/callback",
     failureRedirect: "/login",
   }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
+    res.redirect("/home");
   }
 );
 app.post("/login", (req, res, next) => {

@@ -9,6 +9,7 @@ import {
   Lock, Visibility, VisibilityOff, Email,
   Google, Facebook, GitHub, Movie,
 } from "@mui/icons-material";
+axios.defaults.withCredentials = true;
 
 /* ─── Inject Google Fonts ─── */
 function useFonts() {
