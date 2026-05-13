@@ -19,7 +19,7 @@ const port = 3000;
 const saltRounds = 10;
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://your-frontend-domain.com"
+  "https://movie-rater-a8gchp8z6-philipe-wang-s-projects.vercel.app"
 ];
 
 app.use(
