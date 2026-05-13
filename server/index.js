@@ -18,8 +18,7 @@ const app = express();
 const port = 3000;
 const saltRounds = 10;
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://movie-rater-a8gchp8z6-philipe-wang-s-projects.vercel.app"
+  "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app",
 ];
 
 app.use(
@@ -314,7 +313,7 @@ app.get(
     scope: ["profile", "email"],
   }),
   (req, res) => {
-    res.redirect("http://localhost:5173/home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app//home");
   }
 );
 
@@ -324,7 +323,7 @@ app.get("/auth/facebook/callback",
     failureRedirect: "/login",
   }),
   (req, res) => {
-    res.redirect("http://localhost:5173/home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app//home");
   }
 );
  app.get("/auth/github/mymovies",
@@ -332,7 +331,7 @@ app.get("/auth/facebook/callback",
     failureRedirect: "/login",
   }),
   (req, res) => {
-    res.redirect("http://localhost:5173/home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app//home");
   }
 );
 app.post("/login", (req, res, next) => {
@@ -463,7 +462,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/google/mymovies",
+      callbackURL: "https://movierater-dac6.onrender.com/auth/google/mymovies",
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     async (accessToken, refreshToken, profile, cb) => {
@@ -495,7 +494,7 @@ passport.use(
     {
       clientID: process.env.FACEBOOK_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/facebook/callback",
+      callbackURL: "https://movierater-dac6.onrender.com/auth/facebook/callback",
       profileFields: ["id", "displayName", "emails", "photos"]
     },
     async (accessToken, refreshToken, profile, cb) => {
@@ -526,7 +525,7 @@ passport.use(
     {
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/github/mymovies",
+      callbackURL: "https://movierater-dac6.onrender.com/auth/github/mymovies",
       profileFields: ["id", "displayName", "emails", "photos"],
        scope: ["user:email"], 
     },
