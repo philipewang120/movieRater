@@ -56,6 +56,10 @@ const db = new pg.Client({
     rejectUnauthorized: false,
   },
 });
+new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 db.connect();
 
