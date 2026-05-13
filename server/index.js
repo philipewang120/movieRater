@@ -15,7 +15,7 @@ import cors from "cors";
 dotenv.config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const saltRounds = 10;
 const allowedOrigins = [
   "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app",
@@ -38,13 +38,11 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 1000 * 60 * 60,
-      httpOnly: true,
-       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production"
-    ? "none"
-    : "lax"
-    }
+  maxAge: 1000 * 60 * 60,
+  httpOnly: true,
+  secure: true,
+  sameSite: "none"
+}
   })
 );
 app.set("trust proxy", 1);
@@ -139,6 +137,7 @@ app.get("/movie/:title", async (req, res) => {
           accept: "application/json",
           Authorization: `Bearer ${process.env.TMDB_BEARER}`,
         },
+        
       }
     );
 
@@ -313,7 +312,7 @@ app.get(
     scope: ["profile", "email"],
   }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app//home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
   }
 );
 
@@ -323,7 +322,7 @@ app.get("/auth/facebook/callback",
     failureRedirect: "/login",
   }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app//home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
   }
 );
  app.get("/auth/github/mymovies",
@@ -331,7 +330,7 @@ app.get("/auth/facebook/callback",
     failureRedirect: "/login",
   }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app//home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
   }
 );
 app.post("/login", (req, res, next) => {
