@@ -48,6 +48,7 @@ app.use(
     }
   })
 );
+app.set("trust proxy", 1);
 
 const db = new pg.Client({
   connectionString: process.env.DATABASE_URL,

@@ -410,7 +410,7 @@ function AddMoviePage() {
     try {
       if (isEdit) {
         await axios.post(
-          "http://localhost:3000/edit",
+          `${import.meta.env.VITE_API_URL}/edit`,
           {
             movieId:      incoming.id,
             my_rating:    rating,
@@ -422,7 +422,7 @@ function AddMoviePage() {
         );
       } else {
         await axios.post(
-          "http://localhost:3000/add",
+          `${import.meta.env.VITE_API_URL}/add`,
           {
             movie_id:    displayMovie.id,
             title:       displayMovie.title,
