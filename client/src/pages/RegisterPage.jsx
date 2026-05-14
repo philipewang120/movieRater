@@ -518,7 +518,7 @@ function RegisterPage() {
               className="reg-oauth-btn"
               variant="outlined"
               startIcon={<Google sx={{ fontSize: 18 }} />}
-              href={`${import.meta.env.VITE_API_URL}/auth/google/mymovies`}
+              href={`${import.meta.env.VITE_API_URL}/auth/google`}
             >
               Continue with Google
             </Button>
@@ -527,7 +527,7 @@ function RegisterPage() {
               className="reg-oauth-btn"
               variant="outlined"
               startIcon={<Facebook sx={{ fontSize: 18 }} />}
-              href={`${import.meta.env.VITE_API_URL}/auth/facebook/callback`}
+              href={`${import.meta.env.VITE_API_URL}/auth/facebook`}
             >
               Continue with Facebook
             </Button>
@@ -536,7 +536,7 @@ function RegisterPage() {
               className="reg-oauth-btn"
               variant="outlined"
               startIcon={<GitHub sx={{ fontSize: 18 }} />}
-              href={`${import.meta.env.VITE_API_URL}/auth/github/mymovies`}
+              href={`${import.meta.env.VITE_API_URL}/auth/github`}
             >
               Continue with GitHub
             </Button>
