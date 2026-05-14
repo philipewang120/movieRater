@@ -303,34 +303,50 @@ app.post("/delete", async (req, res) => {
   res.json({ success: true });
 });
 
-app.get(
-  "/auth/google/mymovies",
-  passport.authenticate("google", {
-    failureRedirect: "/login",
-    scope: ["profile", "email"],
-  }),
+
+app.get("/auth/user", (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({ user: req.user });
+  } else {
+    res.status(401).json({ message: "Not authenticated" });
+  }
+});
+
+app.get("/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+
+app.get("/auth/google/mymovies",
+  passport.authenticate("google", { failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login" }),
   (req, res) => {
-    res.redirect("/home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
   }
 );
 
+
+app.get("/auth/facebook",
+  passport.authenticate("facebook", { scope: ["email"] })
+);
 
 app.get("/auth/facebook/callback",
-  passport.authenticate("facebook", {
-    failureRedirect: "/login",
-  }),
+  passport.authenticate("facebook", { failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login" }),
   (req, res) => {
-    res.redirect("/home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
   }
 );
- app.get("/auth/github/mymovies",
-  passport.authenticate("github", {
-    failureRedirect: "/login",
-  }),
+app.get("/auth/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
+
+app.get("/auth/github/mymovies",
+  passport.authenticate("github", { failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login" }),
   (req, res) => {
-    res.redirect("/home");
+    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
   }
 );
+
+
 app.post("/login", (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) {
@@ -413,8 +429,6 @@ app.post("/register", async (req, res) => {
   }
 });
 
-
-import { Strategy as LocalStrategy } from "passport-local";
 
 passport.use(
   "local",
