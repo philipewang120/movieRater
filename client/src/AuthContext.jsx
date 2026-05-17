@@ -1,31 +1,37 @@
 import { createContext, useEffect, useState } from "react";
-import axios from "axios";
+import { getToken, deleteToken } from "./api";
 
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await axios.get(
-          "http://localhost:3000/api/me",
-          { withCredentials: true }
-        );
+    const token = getToken();
 
-        setUser(res.data.user);
-
-      } catch (err) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+    if (!token) {
+      setLoading(false);
+      return;
     }
 
-    fetchUser();
+    // Decode the token payload without a library
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+
+      // Check if token is expired
+      if (payload.exp * 1000 < Date.now()) {
+        deleteToken();
+        setUser(null);
+      } else {
+        setUser(payload);
+      }
+    } catch {
+      deleteToken();
+      setUser(null);
+    }
+
+    setLoading(false);
   }, []);
 
   return (
