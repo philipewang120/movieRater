@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch, saveToken, deleteToken } from "../api";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Grid from "@mui/material/Grid";
@@ -134,19 +135,23 @@ function MovieCard({ movie, onDelete, onEdit, animDelay = 0 }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
 
-  async function confirmDelete() {
-    setDeleting(true);
-    try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/delete`, { movieId: movie.id }, { withCredentials: true });
-      toast(`"${movie.title}" removed`, "success");
-      onDelete && onDelete(movie.id);
-    } catch {
-      toast("Failed to delete. Try again.", "error");
-      setShowConfirm(false);
-    } finally {
-      setDeleting(false);
-    }
+async function confirmDelete() {
+  setDeleting(true);
+  try {
+    const res = await apiFetch("/delete", {
+      method: "POST",
+      body: JSON.stringify({ movieId: movie.id }),
+    });
+    if (!res) return;
+    toast(`"${movie.title}" removed`, "success");
+    onDelete && onDelete(movie.id);
+  } catch {
+    toast("Failed to delete. Try again.", "error");
+    setShowConfirm(false);
+  } finally {
+    setDeleting(false);
   }
+}
 
   const year = movie.release_date?.slice(0, 4);
 
@@ -194,7 +199,11 @@ function MovieListRow({ movie, index, onDelete, onEdit }) {
   async function confirmDelete() {
     setDeleting(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/delete`, { movieId: movie.id }, { withCredentials: true });
+      const res = await apiFetch("/delete", {
+        method: "POST",
+        body: JSON.stringify({ movieId: movie.id }),
+      });
+      if (!res) return;
       toast(`"${movie.title}" removed`, "success");
       onDelete && onDelete(movie.id);
     } catch {
@@ -309,62 +318,67 @@ function HomePage() {
   const [sortBy,     setSortBy]     = useState("");       // sort key
   const [viewMode,   setViewMode]   = useState("grid");   // "grid" | "list"
 
-  async function fetchMovies(sort = "") {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/movies`, {
-        params: sort ? { sort } : {},
-        withCredentials: true,
-      });
-      const d = res.data;
-      const raw =
-        Array.isArray(d)         ? d        :
-        Array.isArray(d?.movies) ? d.movies :
-        Array.isArray(d?.data)   ? d.data   : [];
-
-      const normalized = raw.map((m) => ({
-        id:           m.id           ?? m._id          ?? Math.random(),
-        tmdb_id:      m.tmdb_id      ?? m.tmdbId       ?? m.movie_id ?? m.id,
-        title:        m.title        ?? m.name         ?? "Untitled",
-        poster_path:  m.poster_path  ?? m.posterPath   ?? m.poster   ?? null,
-        tmdb_rating:  m.tmdb_rating  ?? m.tmdbRating   ?? m.vote_average ?? null,
-        my_rating:    Number(m.my_rating ?? m.myRating ?? m.rating   ?? 50),
-        remarks:      m.remarks      ?? m.comment      ?? m.notes    ?? "",
-        release_date: m.release_date ?? m.releaseDate  ?? "",
-        watched_month:m.watched_month ?? null,
-        watched_year: m.watched_year  ?? null,
-      }));
-
-      setMovies(normalized);
-      setProfilePic(d?.profile_pic ?? d?.profilePic ?? d?.avatar ?? "");
-      setEmail(d?.email ? d.email.split("@")[0] : "user");
-    } catch (err) {
-      console.log("fetchMovies error:", err?.response?.status);
-    } finally {
-      setLoading(false);
-    }
+// catch OAuth token from URL and save to localStorage
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (token) {
+    saveToken(token);
+    window.history.replaceState({}, "", "/home"); // clean URL
   }
+}, []);
+
+ async function fetchMovies(sort = "") {
+  setLoading(true);
+  try {
+    const res = await apiFetch(`/movies${sort ? `?sort=${sort}` : ""}`);
+    if (!res) return; // apiFetch redirected to /login
+    const d = await res.json();
+    const raw = Array.isArray(d) ? d : Array.isArray(d?.movies) ? d.movies : [];
+    const normalized = raw.map((m) => ({
+      id:            m.id,
+      tmdb_id:       m.movie_id ?? m.id,
+      title:         m.title ?? "Untitled",
+      poster_path:   m.poster_path ?? null,
+      tmdb_rating:   m.tmdb_rating ?? null,
+      my_rating:     Number(m.my_rating ?? 50),
+      remarks:       m.remarks ?? "",
+      release_date:  m.release_date ?? "",
+      watched_month: m.watched_month ?? null,
+      watched_year:  m.watched_year ?? null,
+    }));
+    setMovies(normalized);
+    setProfilePic(d?.profile_pic ?? "");
+    setEmail(d?.email ? d.email.split("@")[0] : "user");
+  } catch (err) {
+    console.log("fetchMovies error:", err);
+  } finally {
+    setLoading(false);
+  }
+}
 
   function handleSortChange(newSort) {
     setSortBy(newSort);
     fetchMovies(newSort);
   }
 
-  async function handleAddMovie() {
-    if (!movieTitle.trim()) return;
-    setSearching(true);
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/movie/${movieTitle}`, { withCredentials: true });
-      navigate("/add-movie", { state: { movie: res.data } });
-    } catch {
-      toast("Movie not found. Try a different title.", "error");
-    } finally {
-      setSearching(false);
-    }
+async function handleAddMovie() {
+  if (!movieTitle.trim()) return;
+  setSearching(true);
+  try {
+    const res = await apiFetch(`/movie/${movieTitle}`);
+    if (!res) return;
+    const data = await res.json();
+    navigate("/add-movie", { state: { movie: data } });
+  } catch {
+    toast("Movie not found. Try a different title.", "error");
+  } finally {
+    setSearching(false);
   }
+}
 
   async function handleLogout() {
-    try { await axios.post(`${import.meta.env.VITE_API_URL}/api/logout`, {}, { withCredentials: true }); } catch (_) {}
+    deleteToken();
     navigate("/login");
   }
 

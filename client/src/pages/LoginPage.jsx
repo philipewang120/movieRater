@@ -318,32 +318,27 @@ function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   }
 
- async function handleSubmit(e) {
+//handle submit with token storage and redirection
+async function handleSubmit(e) {
   e.preventDefault();
-
   if (!formData.email || !formData.password) {
     setError("Please fill in all fields.");
     return;
   }
-
   setLoading(true);
   setError("");
-
   try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/login`,
-      formData,
-      { withCredentials: true }
-    );
-
-    console.log(response.data);
-
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    localStorage.setItem("token", data.token);
     navigate("/home");
   } catch (err) {
-    setError(
-      err?.response?.data?.message ??
-      "Invalid email or password. Please try again."
-    );
+    setError(err.message ?? "Invalid email or password. Please try again.");
   } finally {
     setLoading(false);
   }

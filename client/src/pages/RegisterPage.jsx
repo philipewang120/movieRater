@@ -348,33 +348,35 @@ function RegisterPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!formData.username || !formData.email || !formData.password) {
-      setError("Please fill in all fields.");
-      return;
-    }
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/register`,
-        formData,
-        { withCredentials: true }
-      );
-      navigate("/home");
-    } catch (err) {
-      setError(
-        err?.response?.data?.message ?? "Registration failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
+ // handle submit with validation, token storage, and redirection
+async function handleSubmit(e) {
+  e.preventDefault();
+  if (!formData.username || !formData.email || !formData.password) {
+    setError("Please fill in all fields.");
+    return;
   }
+  if (formData.password.length < 8) {
+    setError("Password must be at least 8 characters.");
+    return;
+  }
+  setLoading(true);
+  setError("");
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    localStorage.setItem("token", data.token);
+    navigate("/home");
+  } catch (err) {
+    setError(err.message ?? "Registration failed. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <>
