@@ -319,13 +319,14 @@ function HomePage() {
   const [viewMode,   setViewMode]   = useState("grid");   // "grid" | "list"
 
 // catch OAuth token from URL and save to localStorage
-  useEffect(() => {
+useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
     saveToken(token);
-    window.history.replaceState({}, "", "/home"); // clean URL
+    window.history.replaceState({}, "", "/home");
   }
+  fetchMovies();
 }, []);
 
  async function fetchMovies(sort = "") {
@@ -382,7 +383,6 @@ async function handleAddMovie() {
     navigate("/login");
   }
 
-  useEffect(() => { fetchMovies(); }, []);
 
   const safeMovies = Array.isArray(movies) ? movies : [];
   const best       = [...safeMovies].sort((a, b) => b.my_rating - a.my_rating).slice(0, 5);
