@@ -11,6 +11,9 @@ import { Strategy as LocalStrategy } from "passport-local";
 import GitHubStrategy from "passport-github2";
 import cors from "cors";
 import jwt from "jsonwebtoken";
+import { v2 as cloudinary } from "cloudinary";
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 
 dotenv.config();
@@ -46,6 +49,25 @@ const db = new pg.Pool({
   },
 });
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder:         "movie_rater_avatars",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }],
+  },
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB max
+});
 
 // Middleware to verify JWT token for protected routes
 function verifyToken(req, res, next) {
@@ -301,6 +323,36 @@ app.post("/edit", verifyToken, async (req, res) => {
 );
 
   res.json({ success: true });
+});
+
+// upload profile picture, save URL to db, return new token with updated picture URL in payload
+app.post("/profile/avatar", verifyToken, upload.single("avatar"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const imageUrl = req.file.path;
+
+    // Save to database
+    await db.query(
+      "UPDATE users SET profile_pic = $1 WHERE id = $2",
+      [imageUrl, req.user.id]
+    );
+
+    // Return fresh token with updated profile pic
+    const token = jwt.sign(
+      { id: req.user.id, email: req.user.email, profile_pic: imageUrl, username: req.user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ success: true, profile_pic: imageUrl, token });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to upload avatar" });
+  }
 });
 
 app.post("/delete", verifyToken, async (req, res) => {

@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import {
   Movie, Star, Favorite, Settings, ArrowBack,
-  Lock, Person, Edit, TrendingUp, AccessTime,
+  Lock, Person, Edit, TrendingUp, AccessTime, 
 } from "@mui/icons-material";
 
 function useFonts() {
