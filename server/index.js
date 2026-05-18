@@ -952,22 +952,47 @@ app.get("/feed", verifyToken, async (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const limit = 20;
 
-    const result = await db.query(
-      `SELECT a.id, a.type, a.created_at,
-              u.username, u.profile_pic,
-              m.title, m.poster_path, m.my_rating, m.remarks
+    // Movie activities from people you follow
+    const movieActivity = await db.query(
+      `SELECT 
+        'activity' as feed_type,
+        a.id, a.type, a.created_at,
+        u.id as actor_id, u.username, u.profile_pic,
+        m.title, m.poster_path, m.my_rating, m.remarks,
+        NULL as follower_username, NULL as follower_pic
        FROM activities a
        JOIN users u ON a.user_id = u.id
        JOIN movies m ON a.movie_id = m.id
        WHERE a.user_id IN (
          SELECT following_id FROM follows WHERE follower_id = $1
-       )
-       ORDER BY a.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [req.user.id, limit, page * limit]
+       )`,
+      [req.user.id]
     );
 
-    res.json(result.rows);
+    // New followers of people you follow
+    const followActivity = await db.query(
+      `SELECT
+        'follow' as feed_type,
+        f.id, 'followed' as type, f.created_at,
+        u.id as actor_id, u.username, u.profile_pic,
+        NULL as title, NULL as poster_path, NULL as my_rating, NULL as remarks,
+        uf.username as follower_username, uf.profile_pic as follower_pic
+       FROM follows f
+       JOIN users u ON f.following_id = u.id
+       JOIN users uf ON f.follower_id = uf.id
+       WHERE f.following_id IN (
+         SELECT following_id FROM follows WHERE follower_id = $1
+       )
+       AND f.follower_id != $1`,
+      [req.user.id]
+    );
+
+    // Merge, sort by date, paginate
+    const combined = [...movieActivity.rows, ...followActivity.rows]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(page * limit, (page + 1) * limit);
+
+    res.json(combined);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to load feed" });
@@ -993,6 +1018,32 @@ app.get("/notifications", verifyToken, async (req, res) => {
   }
 });
 
+//user search
+app.get("/search/users", verifyToken, async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim().length < 2) return res.json([]);
+
+  try {
+    const result = await db.query(
+      `SELECT u.id, u.username, u.profile_pic, u.bio, u.is_public,
+              COUNT(DISTINCT f1.follower_id) as follower_count,
+              MAX(CASE WHEN f2.follower_id = $1 THEN 1 ELSE 0 END) as is_following
+       FROM users u
+       LEFT JOIN follows f1 ON f1.following_id = u.id
+       LEFT JOIN follows f2 ON f2.following_id = u.id AND f2.follower_id = $1
+       WHERE u.username ILIKE $2 AND u.id != $1
+       GROUP BY u.id
+       ORDER BY follower_count DESC
+       LIMIT 10`,
+      [req.user.id, `%${q.trim()}%`]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Search failed" });
+  }
+});
+
 // ── MARK NOTIFICATIONS READ ────────────────────────────────
 app.put("/notifications/read", verifyToken, async (req, res) => {
   try {
@@ -1004,6 +1055,18 @@ app.put("/notifications/read", verifyToken, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to mark notifications read" });
+  }
+});
+//unread notifications count for showing red dot on bell icon
+app.get("/notifications/unread-count", verifyToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND read = false",
+      [req.user.id]
+    );
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to get count" });
   }
 });
 app.listen(port, () => {

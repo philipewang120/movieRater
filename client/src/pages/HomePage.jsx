@@ -982,7 +982,7 @@ if (token) {
           </Grid>
         </Box>
       </Box>
-      {showSearch && <UserSearchModal open={showSearch} onClose={() => setShowSearch(false)} />}
+      {showSearch && <SearchModal onClose={() => setShowSearch(false)} navigate={navigate} />}
     </>
   );
 }
