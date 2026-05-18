@@ -58,8 +58,31 @@ function verifyToken(req, res, next) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
+//auto-generate username if user doesnt have any from email input.
+function generateUsername(email) {
+  return email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_");
+}
+//ensure user has a username, if not generate one from email and handle duplicates by appending a number
+async function ensureUsername(userId, email) {
+  const existing = await db.query("SELECT username FROM users WHERE id = $1", [userId]);
+  if (!existing.rows[0].username) {
+    const base = generateUsername(email);
+    let username = base;
+    let counter = 1;
+    // Handle duplicates by appending a number
+    while (true) {
+      const taken = await db.query("SELECT id FROM users WHERE username = $1", [username]);
+      if (taken.rows.length === 0) break;
+      username = `${base}${counter++}`;
+    }
+    await db.query("UPDATE users SET username = $1 WHERE id = $2", [username, userId]);
+    return username;
+  }
+  return existing.rows[0].username;
+}
 
 app.use(passport.initialize());
+//get all movies from db for specific user
 app.get("/movies", verifyToken, async (req, res) => {
 
   try {
@@ -67,7 +90,7 @@ app.get("/movies", verifyToken, async (req, res) => {
     const { sort } = req.query;
 
     let orderBy = "id DESC";
-
+//sorting from backend based on query param, default is "id DESC" (newest first)
     switch (sort) {
       case "watched_asc":
         orderBy = "watched_year ASC, watched_month ASC";
@@ -138,7 +161,6 @@ app.get("/movie/:title", async (req, res) => {
     if (!movie) {
       return res.status(404).json({ message: "Movie not found" });
     }
-
     // return movie to frontend (NO DB INSERT HERE)
     res.json(movie);
 
@@ -221,7 +243,7 @@ app.post("/add", verifyToken, async (req, res) => {
     await db.query(
       `INSERT INTO movies
       (movie_id, title, release_date, watched_month, watched_year, poster_path, remarks, tmdb_rating, my_rating, user_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
       [
         movie_id,
         title,
@@ -235,6 +257,10 @@ app.post("/add", verifyToken, async (req, res) => {
         req.user.id,
       ]
     );
+    await db.query(
+  "INSERT INTO activities (user_id, type, movie_id) VALUES ($1, $2, $3)",
+  [req.user.id, "added", result.rows[0].id] // make sure your INSERT returns the id
+);
 
     res.json({ success: true });
 
@@ -269,20 +295,34 @@ app.post("/edit", verifyToken, async (req, res) => {
       req.user.id
     ]
   );
+  await db.query(
+  "INSERT INTO activities (user_id, type, movie_id) VALUES ($1, $2, $3)",
+  [req.user.id, "edited", movieId]
+);
 
   res.json({ success: true });
 });
 
 app.post("/delete", verifyToken, async (req, res) => {
-
   const { movieId } = req.body;
+  try {
+    // Log activity before deleting 
+    await db.query(
+      "INSERT INTO activities (user_id, type, movie_id) VALUES ($1, $2, $3)",
+      [req.user.id, "deleted", movieId]
+    );
 
-  await db.query(
-    "DELETE FROM movies WHERE id = $1 AND user_id = $2",
-    [movieId, req.user.id]
-  );
+    await db.query(
+      "DELETE FROM movies WHERE id = $1 AND user_id = $2",
+      [movieId, req.user.id]
+    );
 
-  res.json({ success: true });
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete movie" });
+  }
 });
 
 // ── AUTH USER (check token) 
@@ -314,13 +354,15 @@ app.get("/auth/google/mymovies",
     session: false
   }),
   (req, res) => {
+  ensureUsername(req.user.id, req.user.email).then((username) => {
     const token = jwt.sign(
-      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic },
+      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
     res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
-  }
+  });
+}
 );
 
 
@@ -335,13 +377,15 @@ app.get("/auth/facebook/callback",
     session: false
   }),
   (req, res) => {
+  ensureUsername(req.user.id, req.user.email).then((username) => {
     const token = jwt.sign(
-      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic },
+      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
     res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
-  }
+  });
+}
 );
 // ── GITHUB 
 app.get("/auth/github",
@@ -354,13 +398,15 @@ app.get("/auth/github/mymovies",
     session: false
   }),
   (req, res) => {
+  ensureUsername(req.user.id, req.user.email).then((username) => {
     const token = jwt.sign(
-      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic },
+      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
     res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
-  }
+  });
+}
 );
 
 app.post("/login", (req, res, next) => {
@@ -376,13 +422,13 @@ app.post("/login", (req, res, next) => {
         message: "Invalid email or password",
       });
     }
-
+  const username = await ensureUsername(user.id, user.email);
     // create token
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+   const token = jwt.sign(
+    { id: user.id, email: user.email, profile_pic: user.profile_pic, username: user.username },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
 
     return res.status(200).json({
       message: "Login successful",
@@ -395,6 +441,7 @@ app.post("/login", (req, res, next) => {
 app.post("/register", async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  const username = await ensureUsername(user.id, user.email);
 
   try {
     const checkResult = await db.query(
@@ -418,8 +465,8 @@ app.post("/register", async (req, res) => {
       }
 
       const result = await db.query(
-        "INSERT INTO users (email, password, profile_pic) VALUES ($1, $2, $3) RETURNING *",
-        [email, hash, null]
+        "INSERT INTO users (email, password, profile_pic, username) VALUES ($1, $2, $3, $4) RETURNING *",
+        [email, hash, null, username]
       );
 
       const user = result.rows[0];
@@ -428,10 +475,11 @@ app.post("/register", async (req, res) => {
   if (err) return res.status(500).json({ message: "Login failed" });
 
   const token = jwt.sign(
-    { id: user.id, email: user.email, profile_pic: user.profile_pic },
+    { id: user.id, email: user.email, profile_pic: user.profile_pic, username: user.username },
     process.env.JWT_SECRET,
     { expiresIn: "1h" }
   );
+  
   return res.status(201).json({ message: "User registered successfully", token });
 });
     });
@@ -583,7 +631,327 @@ passport.use(
   )
 );
 
+//PROFILE ROUTES
 
+// 1.── GET PUBLIC PROFILE ─────────────────────────────────────
+app.get("/profile/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Get user
+    const userResult = await db.query(
+      "SELECT id, username, bio, profile_pic, is_public FROM users WHERE username = $1",
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const profileUser = userResult.rows[0];
+
+    // Check if visitor is following this user (requires token but optional)
+    let isFollowing = false;
+    const authHeader = req.headers.authorization;
+    let visitorId = null;
+
+    if (authHeader) {
+      try {
+        const decoded = jwt.verify(authHeader.split(" ")[1], process.env.JWT_SECRET);
+        visitorId = decoded.id;
+        const followCheck = await db.query(
+          "SELECT id FROM follows WHERE follower_id = $1 AND following_id = $2",
+          [visitorId, profileUser.id]
+        );
+        isFollowing = followCheck.rows.length > 0;
+      } catch (_) {}
+    }
+
+    // Follower / following counts (always visible)
+    const followerCount = await db.query(
+      "SELECT COUNT(*) FROM follows WHERE following_id = $1",
+      [profileUser.id]
+    );
+    const followingCount = await db.query(
+      "SELECT COUNT(*) FROM follows WHERE follower_id = $1",
+      [profileUser.id]
+    );
+
+    // If private and visitor is not following → return limited profile
+    if (!profileUser.is_public && !isFollowing && visitorId !== profileUser.id) {
+      return res.json({
+        id:            profileUser.id,
+        username:      profileUser.username,
+        profile_pic:   profileUser.profile_pic,
+        is_public:     false,
+        isFollowing,
+        followerCount: parseInt(followerCount.rows[0].count),
+        followingCount:parseInt(followingCount.rows[0].count),
+        locked:        true, // frontend uses this to show "follow to see feed"
+      });
+    }
+
+    // Public profile or follower — return full stats
+    const totalMovies = await db.query(
+      "SELECT COUNT(*) FROM movies WHERE user_id = $1",
+      [profileUser.id]
+    );
+
+    const avgRating = await db.query(
+      "SELECT ROUND(AVG(my_rating)) as avg FROM movies WHERE user_id = $1",
+      [profileUser.id]
+    );
+
+    const top3 = await db.query(
+      `SELECT id, title, poster_path, my_rating, tmdb_rating, release_date
+       FROM movies WHERE user_id = $1
+       ORDER BY my_rating DESC LIMIT 3`,
+      [profileUser.id]
+    );
+
+    const recentlyWatched = await db.query(
+      `SELECT id, title, poster_path, my_rating, tmdb_rating, watched_month, watched_year
+       FROM movies WHERE user_id = $1
+       ORDER BY watched_year DESC, watched_month DESC LIMIT 3`,
+      [profileUser.id]
+    );
+
+    const recentActivity = await db.query(
+      `SELECT a.type, a.created_at, m.title, m.poster_path, m.my_rating
+       FROM activities a
+       JOIN movies m ON a.movie_id = m.id
+       WHERE a.user_id = $1
+       ORDER BY a.created_at DESC LIMIT 10`,
+      [profileUser.id]
+    );
+
+    res.json({
+      id:              profileUser.id,
+      username:        profileUser.username,
+      bio:             profileUser.bio,
+      profile_pic:     profileUser.profile_pic,
+      is_public:       profileUser.is_public,
+      isFollowing,
+      followerCount:   parseInt(followerCount.rows[0].count),
+      followingCount:  parseInt(followingCount.rows[0].count),
+      locked:          false,
+      stats: {
+        totalMovies:   parseInt(totalMovies.rows[0].count),
+        avgRating:     parseInt(avgRating.rows[0].avg) || 0,
+      },
+      top3:            top3.rows,
+      recentlyWatched: recentlyWatched.rows,
+      recentActivity:  recentActivity.rows,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load profile" });
+  }
+});
+
+// 2.── UPDATE PROFILE ─────────────────────────────────────────
+app.put("/profile/edit", verifyToken, async (req, res) => {
+  const { username, bio, profile_pic } = req.body;
+
+  try {
+    // Check username isn't taken by someone else
+    if (username) {
+      const taken = await db.query(
+        "SELECT id FROM users WHERE username = $1 AND id != $2",
+        [username, req.user.id]
+      );
+      if (taken.rows.length > 0) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
+    }
+
+    const result = await db.query(
+      `UPDATE users SET
+        username   = COALESCE($1, username),
+        bio        = COALESCE($2, bio),
+        profile_pic= COALESCE($3, profile_pic)
+       WHERE id = $4 RETURNING id, username, bio, profile_pic, is_public`,
+      [username || null, bio || null, profile_pic || null, req.user.id]
+    );
+
+    // Return a fresh token with updated username
+    const updated = result.rows[0];
+    const token = jwt.sign(
+      { id: updated.id, email: req.user.email, profile_pic: updated.profile_pic, username: updated.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ success: true, token, user: updated });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
+// 3.── TOGGLE PRIVACY ─────────────────────────────────────────
+app.put("/profile/privacy", verifyToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      "UPDATE users SET is_public = NOT is_public WHERE id = $1 RETURNING is_public",
+      [req.user.id]
+    );
+    res.json({ is_public: result.rows[0].is_public });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update privacy" });
+  }
+});
+
+//FOLLOW SYTEM (follow/unfollow, followers/following lists, feed, notifications)
+// ── FOLLOW A USER ──────────────────────────────────────────
+app.post("/follow/:userId", verifyToken, async (req, res) => {
+  const followingId = parseInt(req.params.userId);
+
+  if (followingId === req.user.id) {
+    return res.status(400).json({ message: "You cannot follow yourself" });
+  }
+
+  try {
+    // Check target user exists
+    const userExists = await db.query("SELECT id FROM users WHERE id = $1", [followingId]);
+    if (userExists.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await db.query(
+      "INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      [req.user.id, followingId]
+    );
+
+    // Create notification for the followed user
+    await db.query(
+      "INSERT INTO notifications (user_id, actor_id, type) VALUES ($1, $2, $3)",
+      [followingId, req.user.id, "follow"]
+    );
+
+    res.json({ success: true, following: true });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to follow user" });
+  }
+});
+
+// ── UNFOLLOW A USER ────────────────────────────────────────
+app.delete("/follow/:userId", verifyToken, async (req, res) => {
+  const followingId = parseInt(req.params.userId);
+
+  try {
+    await db.query(
+      "DELETE FROM follows WHERE follower_id = $1 AND following_id = $2",
+      [req.user.id, followingId]
+    );
+    res.json({ success: true, following: false });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to unfollow user" });
+  }
+});
+
+// ── GET FOLLOWERS ──────────────────────────────────────────
+app.get("/followers/:userId", async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT u.id, u.username, u.profile_pic
+       FROM follows f
+       JOIN users u ON f.follower_id = u.id
+       WHERE f.following_id = $1
+       ORDER BY f.created_at DESC`,
+      [req.params.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load followers" });
+  }
+});
+
+// ── GET FOLLOWING ──────────────────────────────────────────
+app.get("/following/:userId", async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT u.id, u.username, u.profile_pic
+       FROM follows f
+       JOIN users u ON f.following_id = u.id
+       WHERE f.follower_id = $1
+       ORDER BY f.created_at DESC`,
+      [req.params.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load following" });
+  }
+});
+
+// ── ACTIVITY FEED ──────────────────────────────────────────
+app.get("/feed", verifyToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 0;
+    const limit = 20;
+
+    const result = await db.query(
+      `SELECT a.id, a.type, a.created_at,
+              u.username, u.profile_pic,
+              m.title, m.poster_path, m.my_rating, m.remarks
+       FROM activities a
+       JOIN users u ON a.user_id = u.id
+       JOIN movies m ON a.movie_id = m.id
+       WHERE a.user_id IN (
+         SELECT following_id FROM follows WHERE follower_id = $1
+       )
+       ORDER BY a.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [req.user.id, limit, page * limit]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load feed" });
+  }
+});
+
+// ── NOTIFICATIONS ──────────────────────────────────────────
+app.get("/notifications", verifyToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT n.id, n.type, n.read, n.created_at,
+              u.username as actor_username, u.profile_pic as actor_pic
+       FROM notifications n
+       JOIN users u ON n.actor_id = u.id
+       WHERE n.user_id = $1
+       ORDER BY n.created_at DESC LIMIT 20`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load notifications" });
+  }
+});
+
+// ── MARK NOTIFICATIONS READ ────────────────────────────────
+app.put("/notifications/read", verifyToken, async (req, res) => {
+  try {
+    await db.query(
+      "UPDATE notifications SET read = true WHERE user_id = $1",
+      [req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to mark notifications read" });
+  }
+});
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

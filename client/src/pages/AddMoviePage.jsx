@@ -404,6 +404,9 @@ async function handleSubmit() {
   if (!myRating) { setError("Please enter a rating."); return; }
   const rating = Number(myRating);
   if (rating < 1 || rating > 100) { setError("Rating must be between 1 and 100."); return; }
+  if (!watchedMonth) { setError("Please enter the month you watched this."); return; }
+  if (!watchedYear)  { setError("Please enter the year you watched this."); return; }
+  if (!remarks.trim()) { setError("Please add a short comment."); return; }
   setError("");
   setLoading(true);
   try {
