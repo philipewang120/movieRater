@@ -653,10 +653,12 @@ if (token) {
 
       const res = await apiFetch(`/movies${query}`);
 
-      if (!res) {
+       if (res.status === 401) {
+      if (!localStorage.getItem("token")) {
         navigate("/login");
-        return;
       }
+      return;
+    }
 
       const d = await res.json();
 
@@ -689,6 +691,12 @@ if (token) {
   }
 
   useEffect(() => {
+
+      // Fix Facebook #_=_
+  if (window.location.hash === "#_=_") {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+    //save token from URL (after social login) and clean URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
 
@@ -696,6 +704,11 @@ if (token) {
       saveToken(token);
       window.history.replaceState({}, "", "/home");
     }
+    // If no token and not coming from social login, redirect to login
+     if (!token) {
+    navigate("/login");
+    return;
+  }
 
     fetchMovies();
   }, []);

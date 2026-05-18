@@ -23,11 +23,6 @@ export async function apiFetch(path, options = {}) {
     },
   });
 
-  if (res.status === 401) {
-    deleteToken();
-    window.location.href = "/login";
-    return;
-  }
 
   return res;
 }
