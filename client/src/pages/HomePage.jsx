@@ -652,9 +652,9 @@ if (token) {
       const query = sort ? `?sort=${sort}` : "";
 
       const res = await apiFetch(`/movies${query}`);
-
+      if (!res) return;
        if (res.status === 401) {
-      if (!localStorage.getItem("token")) {
+      localStorage.removeItem("token");{
         navigate("/login");
       }
       return;
@@ -698,14 +698,27 @@ if (token) {
   }
     //save token from URL (after social login) and clean URL
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    const URLtoken = params.get("token");
 
-    if (token) {
-      saveToken(token);
+    if (URLtoken) {
+      saveToken(URLtoken);
       window.history.replaceState({}, "", "/home");
     }
     // If no token and not coming from social login, redirect to login
+    const token = localStorage.getItem("token");
      if (!token) {
+    navigate("/login");
+    return;
+  }//check if token has expired
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (payload.exp * 1000 < Date.now()) {
+      localStorage.removeItem("token");
+      navigate("/login");
+      return;
+    }
+  } catch {
+    localStorage.removeItem("token");
     navigate("/login");
     return;
   }

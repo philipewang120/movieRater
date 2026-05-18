@@ -436,7 +436,15 @@ async function handleSubmit() {
           watched_year:  Number(watchedYear),
         }),
       });
+    }  
+    if (!res) return;
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      navigate("/login");
+      return;
     }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message ?? "Something went wrong");
     navigate("/home");
   } catch (err) {
     setError(err?.message ?? "Something went wrong. Please try again.");

@@ -410,7 +410,7 @@ app.get("/auth/google/mymovies",
     const token = jwt.sign(
       { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
     res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
@@ -433,7 +433,7 @@ app.get("/auth/facebook/callback",
     const token = jwt.sign(
       { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
     res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
@@ -454,7 +454,7 @@ app.get("/auth/github/mymovies",
     const token = jwt.sign(
       { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
     res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
@@ -476,7 +476,7 @@ app.post("/login", (req, res, next) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, profile_pic: user.profile_pic, username },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
     return res.status(200).json({ message: "Login successful", token });
