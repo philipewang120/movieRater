@@ -262,7 +262,7 @@ app.post("/add", verifyToken, async (req, res) => {
         ? tmdb_rating * 10
         : null;
 
-    await db.query(
+    const result = await db.query(
       `INSERT INTO movies
       (movie_id, title, release_date, watched_month, watched_year, poster_path, remarks, tmdb_rating, my_rating, user_id)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
@@ -279,7 +279,7 @@ app.post("/add", verifyToken, async (req, res) => {
         req.user.id,
       ]
     );
-   const activityID = await db.query(
+   const result = await db.query(
   "INSERT INTO activities (user_id, type, movie_id) VALUES ($1, $2, $3) RETURNING id",
   [req.user.id, "added", activityID.rows[0].id] // make sure your INSERT returns the id
 );
