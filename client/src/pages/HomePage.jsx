@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRef } from "react";
 import { apiFetch, saveToken, deleteToken, getToken } from "../api";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -11,8 +12,9 @@ import {
   Add, Favorite, SentimentVeryDissatisfied, SentimentNeutral,
   Logout, Search, Movie, Star, Instagram, Twitter, YouTube,
   OpenInNew, TrendingUp, Edit, Delete,
-  ViewModule, ViewList, Sort,
+  ViewModule, ViewList, Sort,PersonSearch, Notifications, NotificationsNone, 
 } from "@mui/icons-material";
+
 
 import "./HomePage.css";
 
@@ -88,6 +90,17 @@ function EmojiForRating({ rating, size = 13 }) {
   if (rating >= 80) return <Favorite sx={{ fontSize: size, color: "#ff6b6b" }} />;
   if (rating <= 40) return <SentimentVeryDissatisfied sx={{ fontSize: size, color: "#ff6b6b" }} />;
   return <SentimentNeutral sx={{ fontSize: size, color: "#e8c547" }} />;
+}
+
+/*── time helper ─────*/
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 /* ── Sidebar list ── */
@@ -304,6 +317,310 @@ function SocialWidget() {
     </div>
   );
 }
+/* ── SEARCH MODAL ────*/
+function SearchModal({ onClose, navigate }) {
+  const [query, setQuery]     = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [followed, setFollowed] = useState({});
+  const debounceRef = useRef(null);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await apiFetch(`/search/users?q=${encodeURIComponent(query)}`);
+        const data = await res?.json();
+        setResults(Array.isArray(data) ? data : []);
+      } catch { setResults([]); }
+      finally { setLoading(false); }
+    }, 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
+
+  async function toggleFollow(user) {
+    const isFollowing = followed[user.id] ?? !!parseInt(user.is_following);
+    try {
+      if (isFollowing) {
+        await apiFetch(`/follow/${user.id}`, { method: "DELETE" });
+        setFollowed(p => ({ ...p, [user.id]: false }));
+      } else {
+        await apiFetch(`/follow/${user.id}`, { method: "POST" });
+        setFollowed(p => ({ ...p, [user.id]: true }));
+      }
+    } catch (err) { console.error(err); }
+  }
+
+  return (
+    <div className="search-modal-overlay" onClick={onClose}>
+      <div className="search-modal" onClick={e => e.stopPropagation()}>
+        <div className="search-modal-input-wrap">
+          <Search sx={{ color: "var(--muted)", fontSize: 20, flexShrink: 0 }} />
+          <input
+            className="search-modal-input"
+            placeholder="Search users by username…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoFocus
+          />
+          <button className="search-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="search-results">
+          {loading && <div className="search-loading">Searching…</div>}
+          {!loading && query.length >= 2 && results.length === 0 && (
+            <div className="search-empty">No users found for "{query}"</div>
+          )}
+          {!loading && query.length < 2 && (
+            <div className="search-empty">Type at least 2 characters to search</div>
+          )}
+          {results.map(user => {
+            const isFollowing = followed[user.id] !== undefined
+              ? followed[user.id]
+              : !!parseInt(user.is_following);
+            return (
+              <div key={user.id} className="search-result-item">
+                <Avatar
+                  src={user.profile_pic}
+                  sx={{ width: 42, height: 42, background: "var(--raised)", fontSize: 16, fontFamily: "var(--font-display)", flexShrink: 0, cursor: "pointer" }}
+                  onClick={() => { onClose(); navigate(`/profile/${user.username}`); }}
+                >
+                  {!user.profile_pic && user.username?.charAt(0).toUpperCase()}
+                </Avatar>
+                <div
+                  className="search-result-info"
+                  onClick={() => { onClose(); navigate(`/profile/${user.username}`); }}
+                >
+                  <div className="search-result-username">@{user.username}</div>
+                  {user.bio && <div className="search-result-bio">{user.bio}</div>}
+                  <div className="search-result-meta">
+                    {user.follower_count} follower{user.follower_count !== 1 ? "s" : ""}
+                    {!user.is_public && " · 🔒 Private"}
+                  </div>
+                </div>
+                <Button
+                  className={isFollowing ? "search-unfollow-btn" : "search-follow-btn"}
+                  onClick={e => { e.stopPropagation(); toggleFollow(user); }}
+                >
+                  {isFollowing ? "Unfollow" : "Follow"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+/* ── NOTIFICATIONS BELL ──*/
+function NotificationsBell() {
+  const navigate = useNavigate();
+  const [open, setOpen]           = useState(false);
+  const [notifs, setNotifs]       = useState([]);
+  const [unread, setUnread]       = useState(0);
+  const [loading, setLoading]     = useState(false);
+  const dropdownRef               = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Poll unread count every 60s
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function fetchUnreadCount() {
+    try {
+      const res = await apiFetch("/notifications/unread-count");
+      const data = await res?.json();
+      if (data) setUnread(data.count);
+    } catch {}
+  }
+
+  async function handleOpen() {
+    setOpen(o => !o);
+    if (!open) {
+      setLoading(true);
+      try {
+        const res = await apiFetch("/notifications");
+        const data = await res?.json();
+        setNotifs(Array.isArray(data) ? data : []);
+        // Mark all read
+        await apiFetch("/notifications/read", { method: "PUT" });
+        setUnread(0);
+      } catch {}
+      finally { setLoading(false); }
+    }
+  }
+
+  return (
+    <div className="notif-wrap" ref={dropdownRef}>
+      <button className="notif-btn" onClick={handleOpen}>
+        {unread > 0
+          ? <Notifications sx={{ fontSize: 22, color: "var(--accent)" }} />
+          : <NotificationsNone sx={{ fontSize: 22 }} />
+        }
+        {unread > 0 && (
+          <span className="notif-badge">{unread > 9 ? "9+" : unread}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="notif-dropdown">
+          <div className="notif-header">
+            <span className="notif-title">NOTIFICATIONS</span>
+            {notifs.some(n => !n.read) && (
+              <button className="notif-mark-read" onClick={async () => {
+                await apiFetch("/notifications/read", { method: "PUT" });
+                setNotifs(p => p.map(n => ({ ...n, read: true })));
+                setUnread(0);
+              }}>
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div className="notif-list">
+            {loading && <div className="notif-empty">Loading…</div>}
+            {!loading && notifs.length === 0 && (
+              <div className="notif-empty">No notifications yet</div>
+            )}
+            {notifs.map(n => (
+              <div
+                key={n.id}
+                className={`notif-item${!n.read ? " unread" : ""}`}
+                onClick={() => { setOpen(false); navigate(`/profile/${n.actor_username}`); }}
+              >
+                <Avatar
+                  src={n.actor_pic}
+                  sx={{ width: 36, height: 36, background: "var(--raised)", fontSize: 14, fontFamily: "var(--font-display)", flexShrink: 0 }}
+                >
+                  {!n.actor_pic && n.actor_username?.charAt(0).toUpperCase()}
+                </Avatar>
+                <div className="notif-item-text">
+                  <span>@{n.actor_username}</span> started following you
+                </div>
+                <span className="notif-item-time">{timeAgo(n.created_at)}</span>
+                {!n.read && <div className="notif-unread-dot" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+/* ── ACTIVITY FEED SIDEBAR */
+function ActivityFeed() {
+  const navigate = useNavigate();
+  const [feed, setFeed]       = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadFeed() {
+    try {
+      const res = await apiFetch("/feed");
+      const data = await res?.json();
+      setFeed(Array.isArray(data) ? data : []);
+    } catch { setFeed([]); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => {
+    loadFeed();
+    const interval = setInterval(loadFeed, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="side-panel fade-up">
+      <div className="side-panel-title" style={{ justifyContent: "space-between" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <TrendingUp sx={{ fontSize: 18 }} /> FOLLOWING ACTIVITY
+        </span>
+        <button
+          onClick={loadFeed}
+          style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 12, fontFamily: "var(--font-body)", transition: "color 0.2s" }}
+          onMouseEnter={e => e.target.style.color = "#e0e0e8"}
+          onMouseLeave={e => e.target.style.color = "var(--muted)"}
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      {loading && (
+        <Typography sx={{ color: "var(--muted)", fontSize: 13, py: 1 }}>Loading…</Typography>
+      )}
+
+      {!loading && feed.length === 0 && (
+        <Typography sx={{ color: "var(--muted)", fontSize: 13, py: 1, lineHeight: 1.5 }}>
+          Follow people to see their activity here
+        </Typography>
+      )}
+
+      <Stack spacing={1}>
+        {feed.map((item, i) => (
+          <div
+            key={`${item.feed_type}-${item.id}-${i}`}
+            style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              padding: "10px 12px", background: "var(--raised)",
+              borderRadius: 10, cursor: "pointer",
+              transition: "background 0.2s",
+            }}
+            onClick={() => navigate(`/profile/${item.username}`)}
+            onMouseEnter={e => e.currentTarget.style.background = "#2e2e3a"}
+            onMouseLeave={e => e.currentTarget.style.background = "var(--raised)"}
+          >
+            <Avatar
+              src={item.profile_pic}
+              sx={{ width: 32, height: 32, fontSize: 13, flexShrink: 0, background: "var(--card)", fontFamily: "var(--font-display)" }}
+            >
+              {!item.profile_pic && item.username?.charAt(0).toUpperCase()}
+            </Avatar>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {item.feed_type === "follow" ? (
+                <div style={{ fontSize: 12, color: "#e0e0e8", lineHeight: 1.4 }}>
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>@{item.follower_username}</span>
+                  {" followed "}
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>@{item.username}</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "#e0e0e8", lineHeight: 1.4 }}>
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>@{item.username}</span>
+                  {item.type === "added"   && " added "}
+                  {item.type === "edited"  && " updated "}
+                  {item.type === "deleted" && " removed "}
+                  <span style={{ color: "#f0f0f5", fontWeight: 500 }}>{item.title}</span>
+                  {item.my_rating && item.type !== "deleted" && (
+                    <span style={{ color: "var(--accent2)" }}> ⭐ {item.my_rating}/100</span>
+                  )}
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
+                {timeAgo(item.created_at)}
+              </div>
+            </div>
+            {item.poster_path && item.feed_type === "activity" && (
+              <img
+                src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                alt={item.title}
+                style={{ width: 28, height: 40, objectFit: "cover", borderRadius: 4, flexShrink: 0 }}
+              />
+            )}
+          </div>
+        ))}
+      </Stack>
+    </div>
+  );
+}
 
 /* ── Main page ── */
 function HomePage() {
@@ -319,6 +636,7 @@ function HomePage() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("");
   const [viewMode, setViewMode] = useState("grid");
+  const [showSearch, setShowSearch] = useState(false);
   const token = getToken();
 
 
@@ -433,37 +751,58 @@ if (token) {
 
         {/* NAVBAR */}
         <AppBar position="sticky" className="nav-bar" elevation={0}>
-          <Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
-            <Box className="nav-logo" onClick={() => navigate("/")}>
-              <div className="logo-icon"><Movie sx={{ fontSize: 20 }} /></div>
-              MOVIE RATER
-            </Box>
-            <Box sx={{ flex: 1 }} />
-            <Box className="search-wrap">
-              <Search sx={{ color: "var(--muted)", fontSize: 18 }} />
-              <input placeholder="Search your movies…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </Box>
-            <Box sx={{ flex: 1 }} />
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <div
-  onClick={() => navigate(`/profile/${currentUser?.username}`)}
-  style={{ cursor: "pointer" }}
->
-  {profilePic
-    ? <Avatar src={profilePic} sx={{ width: 40, height: 40 }} />
-    : <div className="nav-avatar-initials">{initial}</div>
-  }
-</div>
-              <Typography sx={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, color: "#e0e0e8", display: { xs: "none", sm: "block" } }}>
-                Hello, {currentUser?.username}!
-              </Typography>
-              <Tooltip title="Log out">
-                <Button className="logout-btn" size="small" startIcon={<Logout sx={{ fontSize: 16 }} />} onClick={handleLogout}>
-                  Log out
-                </Button>
-              </Tooltip>
-            </Stack>
-          </Toolbar>
+        
+<Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
+  <Box className="nav-logo" onClick={() => navigate("/")}>
+    <div className="logo-icon"><Movie sx={{ fontSize: 20 }} /></div>
+    MOVIE RATER
+  </Box>
+  <Box sx={{ flex: 1 }} />
+  <Box className="search-wrap">
+    <Search sx={{ color: "var(--muted)", fontSize: 18 }} />
+    <input
+      placeholder="Search your movies…"
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  </Box>
+  <Box sx={{ flex: 1 }} />
+  <Stack direction="row" spacing={1} alignItems="center">
+
+    {/* User search icon */}
+    <Tooltip title="Find users">
+      <button className="nav-icon-btn" onClick={() => setShowSearch(true)}>
+        <PersonSearch sx={{ fontSize: 22 }} />
+      </button>
+    </Tooltip>
+
+    {/* Notifications */}
+    <NotificationsBell />
+
+    {/* Avatar — clickable to own profile */}
+    <Tooltip title="My profile">
+      <div
+        style={{ cursor: "pointer" }}
+        onClick={() => navigate(`/profile/${currentUser?.username}`)}
+      >
+        {profilePic
+          ? <Avatar src={profilePic} sx={{ width: 38, height: 38 }} />
+          : <div className="nav-avatar-initials">{initial}</div>
+        }
+      </div>
+    </Tooltip>
+
+    <Typography sx={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, color: "#e0e0e8", display: { xs: "none", sm: "block" } }}>
+      Hello, {email}!
+    </Typography>
+
+    <Tooltip title="Log out">
+      <Button className="logout-btn" size="small" startIcon={<Logout sx={{ fontSize: 16 }} />} onClick={handleLogout}>
+        Log out
+      </Button>
+    </Tooltip>
+  </Stack>
+</Toolbar>
         </AppBar>
 
         <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }}>
@@ -487,6 +826,7 @@ if (token) {
               <div className="sidebar-scroll-wrap">
                 <Box sx={{ position: "sticky", top: 90, width: "100%", maxHeight: "calc(100vh - 110px)", overflowY: "auto", overflowX: "hidden", pr: "4px", pb: "48px" }}>
                   <Stack spacing={3}>
+                    <ActivityFeed /> 
                     <SideList title="Favorites"   movies={best}  />
                     <SideList title="Worst Watch" movies={worst} worst />
                     <TmdbTopRated />
@@ -642,6 +982,7 @@ if (token) {
           </Grid>
         </Box>
       </Box>
+      {showSearch && <UserSearchModal open={showSearch} onClose={() => setShowSearch(false)} />}
     </>
   );
 }
