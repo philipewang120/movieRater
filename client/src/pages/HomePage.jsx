@@ -455,7 +455,7 @@ if (token) {
   }
 </div>
               <Typography sx={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, color: "#e0e0e8", display: { xs: "none", sm: "block" } }}>
-                Hello, {username}!
+                Hello, {currentUser?.username}!
               </Typography>
               <Tooltip title="Log out">
                 <Button className="logout-btn" size="small" startIcon={<Logout sx={{ fontSize: 16 }} />} onClick={handleLogout}>
