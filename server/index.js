@@ -409,7 +409,7 @@ app.get("/auth/github/mymovies",
 }
 );
 
-app.post("/login", (req, res, next) => {
+app.post("/login", async (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) {
       return res.status(500).json({
