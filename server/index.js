@@ -409,86 +409,88 @@ app.get("/auth/github/mymovies",
 }
 );
 
-app.post("/login", async (req, res, next) => {
-  passport.authenticate("local", (err, user, info) => {
+app.post("/login", (req, res, next) => {
+  passport.authenticate("local", async (err, user, info) => {  
     if (err) {
-      return res.status(500).json({
-        message: "Server error",
-      });
+      return res.status(500).json({ message: "Server error" });
     }
 
     if (!user) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
-  const username = await ensureUsername(user.id, user.email);
-    // create token
-   const token = jwt.sign(
-    { id: user.id, email: user.email, profile_pic: user.profile_pic, username: user.username },
-    process.env.JWT_SECRET,
-    { expiresIn: "1h" }
-  );
 
-    return res.status(200).json({
-      message: "Login successful",
-      token,
-      user,
-    });
+    const username = await ensureUsername(user.id, user.email); 
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, profile_pic: user.profile_pic, username },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    return res.status(200).json({ message: "Login successful", token });
+
   })(req, res, next);
 });
 
 app.post("/register", async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const username = await ensureUsername(user.id, user.email);
+  const providedUsername = req.body.username?.trim();
 
   try {
     const checkResult = await db.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
+      "SELECT * FROM users WHERE email = $1", [email]
     );
 
     if (checkResult.rows.length > 0) {
-      return res.status(400).json({
-        message: "User already exists",
-      });
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Check username is not taken
+    if (providedUsername) {
+      const usernameTaken = await db.query(
+        "SELECT id FROM users WHERE username = $1", [providedUsername]
+      );
+      if (usernameTaken.rows.length > 0) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
     }
 
     bcrypt.hash(password, saltRounds, async (err, hash) => {
       if (err) {
-        console.error("Error hashing password:", err);
-
-        return res.status(500).json({
-          message: "Error hashing password",
-        });
+        return res.status(500).json({ message: "Error hashing password" });
       }
 
       const result = await db.query(
-        "INSERT INTO users (email, password, profile_pic, username) VALUES ($1, $2, $3, $4) RETURNING *",
-        [email, hash, null, username]
+        "INSERT INTO users (email, password, profile_pic) VALUES ($1, $2, $3) RETURNING *",
+        [email, hash, null]
       );
 
       const user = result.rows[0];
 
-     req.login(user, (err) => {
-  if (err) return res.status(500).json({ message: "Login failed" });
+      // Use provided username, or auto-generate from email as fallback
+      const username = providedUsername || await ensureUsername(user.id, user.email);
+      
+      // Save it if it was provided (ensureUsername already saves if auto-generated)
+      if (providedUsername) {
+        await db.query(
+          "UPDATE users SET username = $1 WHERE id = $2",
+          [providedUsername, user.id]
+        );
+      }
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email, profile_pic: user.profile_pic, username: user.username },
-    process.env.JWT_SECRET,
-    { expiresIn: "1h" }
-  );
-  
-  return res.status(201).json({ message: "User registered successfully", token });
-});
+      const token = jwt.sign(
+        { id: user.id, email: user.email, profile_pic: user.profile_pic, username },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      return res.status(201).json({ message: "User registered successfully", token });
     });
+
   } catch (err) {
     console.log(err);
-
-    return res.status(500).json({
-      message: "Server error",
-    });
+    return res.status(500).json({ message: "Server error" });
   }
 });
 

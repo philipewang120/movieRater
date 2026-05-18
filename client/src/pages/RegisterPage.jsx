@@ -351,26 +351,44 @@ function RegisterPage() {
  // handle submit with validation, token storage, and redirection
 async function handleSubmit(e) {
   e.preventDefault();
+
   if (!formData.username || !formData.email || !formData.password) {
     setError("Please fill in all fields.");
     return;
   }
+
+  // Username validation
+  if (formData.username.length < 3) {
+    setError("Username must be at least 3 characters.");
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+    setError("Username can only contain letters, numbers and underscores.");
+    return;
+  }
+
   if (formData.password.length < 8) {
     setError("Password must be at least 8 characters.");
     return;
   }
+
   setLoading(true);
   setError("");
+
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(formData), // sends username, email, password
     });
+
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
+
     localStorage.setItem("token", data.token);
     navigate("/home");
+
   } catch (err) {
     setError(err.message ?? "Registration failed. Please try again.");
   } finally {
