@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { apiFetch } from "../api";
 import axios from "axios";
 import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { ArrowBack, Movie, Star, Edit } from "@mui/icons-material";
@@ -399,52 +400,47 @@ function AddMoviePage() {
     );
   }
 
-  async function handleSubmit() {
-    if (!myRating) { setError("Please enter a rating."); return; }
-    const rating = Number(myRating);
-    if (rating < 1 || rating > 100) { setError("Rating must be between 1 and 100."); return; }
-
-    setError("");
-    setLoading(true);
-
-    try {
-      if (isEdit) {
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/edit`,
-          {
-            movieId:      incoming.id,
-            my_rating:    rating,
-            remarks,
-            watched_month: Number(watchedMonth),
-            watched_year:  Number(watchedYear),
-          },
-          { withCredentials: true }
-        );
-      } else {
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/add`,
-          {
-            movie_id:    displayMovie.id,
-            title:       displayMovie.title,
-            poster_path: displayMovie.poster_path,
-            tmdb_rating: displayMovie.vote_average ?? displayMovie.tmdb_rating,
-            release_date:displayMovie.release_date,
-            remarks,
-            my_rating:    rating,
-            watched_month: Number(watchedMonth),
-            watched_year:  Number(watchedYear),
-          },
-          { withCredentials: true }
-        );
-      }
-      navigate("/home");
-    } catch (err) {
-      console.log("Submit error:", err);
-      setError(err?.response?.data?.message ?? "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+async function handleSubmit() {
+  if (!myRating) { setError("Please enter a rating."); return; }
+  const rating = Number(myRating);
+  if (rating < 1 || rating > 100) { setError("Rating must be between 1 and 100."); return; }
+  setError("");
+  setLoading(true);
+  try {
+    if (isEdit) {
+      await apiFetch("/edit", {
+        method: "POST",
+        body: JSON.stringify({
+          movieId: incoming.id,
+          my_rating: rating,
+          remarks,
+          watched_month: Number(watchedMonth),
+          watched_year: Number(watchedYear),
+        }),
+      });
+    } else {
+      await apiFetch("/add", {
+        method: "POST",
+        body: JSON.stringify({
+          movie_id:     displayMovie.id,
+          title:        displayMovie.title,
+          poster_path:  displayMovie.poster_path,
+          tmdb_rating:  displayMovie.vote_average ?? displayMovie.tmdb_rating,
+          release_date: displayMovie.release_date,
+          remarks,
+          my_rating:    rating,
+          watched_month: Number(watchedMonth),
+          watched_year:  Number(watchedYear),
+        }),
+      });
     }
+    navigate("/home");
+  } catch (err) {
+    setError(err?.message ?? "Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
   }
+}
 
   const ratingNum = Number(myRating) || 0;
 

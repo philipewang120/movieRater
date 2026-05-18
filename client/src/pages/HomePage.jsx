@@ -308,79 +308,102 @@ function SocialWidget() {
 function HomePage() {
   useFonts();
   const navigate = useNavigate();
-  const [movies,     setMovies]     = useState([]);
-  const [email,      setEmail]      = useState("");
+
+  const [movies, setMovies] = useState([]);
+  const [email, setEmail] = useState("");
   const [profilePic, setProfilePic] = useState("");
   const [movieTitle, setMovieTitle] = useState("");
-  const [searching,  setSearching]  = useState(false);
-  const [loading,    setLoading]    = useState(true);
-  const [search,     setSearch]     = useState("");
-  const [sortBy,     setSortBy]     = useState("");       // sort key
-  const [viewMode,   setViewMode]   = useState("grid");   // "grid" | "list"
+  const [searching, setSearching] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
 
-// catch OAuth token from URL and save to localStorage
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-  if (token) {
-    saveToken(token);
-    window.history.replaceState({}, "", "/home");
-  }
-  fetchMovies();
-}, []);
+  async function fetchMovies(sort = sortBy) {
+    try {
+      setLoading(true);
 
- async function fetchMovies(sort = "") {
-  setLoading(true);
-  try {
-    const res = await apiFetch(`/movies${sort ? `?sort=${sort}` : ""}`);
-    if (!res) return; // apiFetch redirected to /login
-    const d = await res.json();
-    const raw = Array.isArray(d) ? d : Array.isArray(d?.movies) ? d.movies : [];
-    const normalized = raw.map((m) => ({
-      id:            m.id,
-      tmdb_id:       m.movie_id ?? m.id,
-      title:         m.title ?? "Untitled",
-      poster_path:   m.poster_path ?? null,
-      tmdb_rating:   m.tmdb_rating ?? null,
-      my_rating:     Number(m.my_rating ?? 50),
-      remarks:       m.remarks ?? "",
-      release_date:  m.release_date ?? "",
-      watched_month: m.watched_month ?? null,
-      watched_year:  m.watched_year ?? null,
-    }));
-    setMovies(normalized);
-    setProfilePic(d?.profile_pic ?? "");
-    setEmail(d?.email ? d.email.split("@")[0] : "user");
-  } catch (err) {
-    console.log("fetchMovies error:", err);
-  } finally {
-    setLoading(false);
+      const query = sort ? `?sort=${sort}` : "";
+
+      const res = await apiFetch(`/movies${query}`);
+
+      if (!res) {
+        navigate("/login");
+        return;
+      }
+
+      const d = await res.json();
+
+      const raw = Array.isArray(d.movies) ? d.movies : [];
+
+      const normalized = raw.map((m) => ({
+        id: m.id,
+        tmdb_id: m.movie_id ?? m.id,
+        title: m.title ?? "Untitled",
+        poster_path: m.poster_path ?? null,
+        tmdb_rating: m.tmdb_rating ?? null,
+        my_rating: Number(m.my_rating ?? 50),
+        remarks: m.remarks ?? "",
+        release_date: m.release_date ?? "",
+        watched_month: m.watched_month ?? null,
+        watched_year: m.watched_year ?? null,
+      }));
+
+      setMovies(normalized);
+      setProfilePic(d?.profile_pic ?? "");
+      setEmail(d?.email ? d.email.split("@")[0] : "user");
+
+    } catch (err) {
+      console.log("fetchMovies error:", err);
+      toast("Failed to load movies", "error");
+
+    } finally {
+      setLoading(false);
+    }
   }
-}
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (token) {
+      saveToken(token);
+      window.history.replaceState({}, "", "/home");
+    }
+
+    fetchMovies();
+  }, []);
 
   function handleSortChange(newSort) {
     setSortBy(newSort);
     fetchMovies(newSort);
   }
 
-async function handleAddMovie() {
-  if (!movieTitle.trim()) return;
-  setSearching(true);
-  try {
-    const res = await apiFetch(`/movie/${movieTitle}`);
-    if (!res) return;
-    const data = await res.json();
-    navigate("/add-movie", { state: { movie: data } });
-  } catch {
-    toast("Movie not found. Try a different title.", "error");
-  } finally {
-    setSearching(false);
-  }
-}
-
   async function handleLogout() {
     deleteToken();
     navigate("/login");
+  }
+
+  async function handleAddMovie() {
+    if (!movieTitle.trim()) return;
+
+    setSearching(true);
+
+    try {
+      const res = await apiFetch(`/movie/${movieTitle}`);
+
+      if (!res) return;
+
+      const data = await res.json();
+
+      navigate("/add-movie", {
+        state: { movie: data },
+      });
+    } catch {
+      toast("Movie not found. Try a different title.", "error");
+    } finally {
+      setSearching(false);
+    }
   }
 
 

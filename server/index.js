@@ -7,10 +7,11 @@ import bcrypt from "bcryptjs";
 import passport from "passport";
 import GoogleStrategy from "passport-google-oauth20";
 import FacebookStrategy from "passport-facebook";
-import GitHubStrategy from "passport-github2";
-import session from "express-session";
-import cors from "cors";
 import { Strategy as LocalStrategy } from "passport-local";
+import GitHubStrategy from "passport-github2";
+import cors from "cors";
+import jwt from "jsonwebtoken";
+
 
 dotenv.config();
 
@@ -36,20 +37,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
-app.use(
-  session({
-    secret: process.env.SECRET_KEY,
-    resave: false,
-    saveUninitialized: false,
-    proxy: true,
-    cookie: {
-      maxAge: 1000 * 60 * 60,
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    },
-  })
-);
+
 
 const db = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -58,15 +46,21 @@ const db = new pg.Pool({
   },
 });
 
-app.use(passport.initialize());
-app.use(passport.session());
 
-
-app.get("/movies", async (req, res) => {
-
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
+// Middleware to verify JWT token for protected routes
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
+}
+
+app.use(passport.initialize());
+app.get("/movies", verifyToken, async (req, res) => {
 
   try {
 
@@ -154,7 +148,7 @@ app.get("/movie/:title", async (req, res) => {
   }
 });
 //search top 5 movies of current year.
-app.get("/top-movies", async (req, res) => {
+app.get("/top-movies", verifyToken, async (req, res) => {
   try {
     const currentYear = new Date().getFullYear();
 
@@ -199,11 +193,7 @@ app.get("/top-movies", async (req, res) => {
   }
 });
 
-app.post("/add", async (req, res) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
+app.post("/add", verifyToken, async (req, res) => {
   try {
     const {
       movie_id,
@@ -254,11 +244,7 @@ app.post("/add", async (req, res) => {
   }
 });
 
-app.post("/edit", async (req, res) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
+app.post("/edit", verifyToken, async (req, res) => {
   const {
     movieId,
     my_rating,
@@ -287,11 +273,7 @@ app.post("/edit", async (req, res) => {
   res.json({ success: true });
 });
 
-app.post("/delete", async (req, res) => {
-
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+app.post("/delete", verifyToken, async (req, res) => {
 
   const { movieId } = req.body;
 
@@ -303,49 +285,83 @@ app.post("/delete", async (req, res) => {
   res.json({ success: true });
 });
 
-
+// ── AUTH USER (check token) 
 app.get("/auth/user", (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({ user: req.user });
-  } else {
-    res.status(401).json({ message: "Not authenticated" });
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Not authenticated" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.json({ user: decoded });
+  } catch {
+    res.status(401).json({ message: "Invalid or expired token" });
   }
 });
 
+// ── LOGOUT (handled client-side by deleting token, but we can also destroy session here if needed)
+app.post("/api/logout", (req, res) => {
+  res.json({ success: true }); // client just deletes the token
+});
+
+
+// ── GOOGLE 
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
-
 app.get("/auth/google/mymovies",
-  passport.authenticate("google", { failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login" }),
+  passport.authenticate("google", {
+    failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
+    session: false
+  }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
+    const token = jwt.sign(
+      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   }
 );
 
 
+// ── FACEBOOK 
 app.get("/auth/facebook",
   passport.authenticate("facebook", { scope: ["email"] })
 );
 
 app.get("/auth/facebook/callback",
-  passport.authenticate("facebook", { failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login" }),
+  passport.authenticate("facebook", {
+    failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
+    session: false
+  }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
+    const token = jwt.sign(
+      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   }
 );
+// ── GITHUB 
 app.get("/auth/github",
   passport.authenticate("github", { scope: ["user:email"] })
 );
 
 app.get("/auth/github/mymovies",
-  passport.authenticate("github", { failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login" }),
+  passport.authenticate("github", {
+    failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
+    session: false
+  }),
   (req, res) => {
-    res.redirect("https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home");
+    const token = jwt.sign(
+      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   }
 );
-
 
 app.post("/login", (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
@@ -361,20 +377,21 @@ app.post("/login", (req, res, next) => {
       });
     }
 
-    req.login(user, (err) => {
-      if (err) {
-        return res.status(500).json({
-          message: "Login failed",
-        });
-      }
+    // create token
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-      return res.status(200).json({
-        message: "Login successful",
-        user,
-      });
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user,
     });
   })(req, res, next);
 });
+
 app.post("/register", async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -407,18 +424,16 @@ app.post("/register", async (req, res) => {
 
       const user = result.rows[0];
 
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({
-            message: "Login failed",
-          });
-        }
+     req.login(user, (err) => {
+  if (err) return res.status(500).json({ message: "Login failed" });
 
-        return res.status(201).json({
-          message: "User registered successfully",
-          user,
-        });
-      });
+  const token = jwt.sign(
+    { id: user.id, email: user.email, profile_pic: user.profile_pic },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+  return res.status(201).json({ message: "User registered successfully", token });
+});
     });
   } catch (err) {
     console.log(err);
@@ -568,24 +583,6 @@ passport.use(
   )
 );
 
-passport.serializeUser((user, cb) => {
-  cb(null, user.id);
-});
-
-
-passport.deserializeUser(async (id, cb) => {
-  try {
-    const result = await db.query("SELECT * FROM users WHERE id = $1", [id]);
-
-    if (result.rows.length === 0) {
-      return cb(null, false); // user not found
-    }
-
-    cb(null, result.rows[0]);
-  } catch (err) {
-    cb(err);
-  }
-});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
