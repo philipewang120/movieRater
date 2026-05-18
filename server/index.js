@@ -148,7 +148,7 @@ app.get("/movie/:title", async (req, res) => {
   }
 });
 //search top 5 movies of current year.
-app.get("/top-movies", verifyToken, async (req, res) => {
+app.get("/top-movies", async (req, res) => {
   try {
     const currentYear = new Date().getFullYear();
 
