@@ -279,7 +279,7 @@ app.post("/add", verifyToken, async (req, res) => {
         req.user.id,
       ]
     );
-    await db.query(
+   const result = await db.query(
   "INSERT INTO activities (user_id, type, movie_id) VALUES ($1, $2, $3)",
   [req.user.id, "added", result.rows[0].id] // make sure your INSERT returns the id
 );
