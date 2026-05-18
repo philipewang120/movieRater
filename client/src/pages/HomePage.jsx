@@ -13,6 +13,7 @@ import {
   OpenInNew, TrendingUp, Edit, Delete,
   ViewModule, ViewList, Sort,
 } from "@mui/icons-material";
+import { apiFetch, saveToken, deleteToken, getToken } from "../api";
 import "./HomePage.css";
 
 /* ─── Google Fonts ─── */
@@ -318,6 +319,13 @@ function HomePage() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("");
   const [viewMode, setViewMode] = useState("grid");
+  const token = getToken();
+
+
+  let currentUser = null;
+if (token) {
+  try { currentUser = JSON.parse(atob(token.split(".")[1])); } catch (_) {}
+}
 
   async function fetchMovies(sort = sortBy) {
     try {
@@ -437,12 +445,17 @@ function HomePage() {
             </Box>
             <Box sx={{ flex: 1 }} />
             <Stack direction="row" spacing={1.5} alignItems="center">
-              {profilePic
-                ? <Avatar src={profilePic} className="nav-user-avatar" sx={{ width: 40, height: 40 }} />
-                : <div className="nav-avatar-initials">{initial}</div>
-              }
+              <div
+  onClick={() => navigate(`/profile/${currentUser?.username}`)}
+  style={{ cursor: "pointer" }}
+>
+  {profilePic
+    ? <Avatar src={profilePic} sx={{ width: 40, height: 40 }} />
+    : <div className="nav-avatar-initials">{initial}</div>
+  }
+</div>
               <Typography sx={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, color: "#e0e0e8", display: { xs: "none", sm: "block" } }}>
-                Hello, {email}!
+                Hello, {username}!
               </Typography>
               <Tooltip title="Log out">
                 <Button className="logout-btn" size="small" startIcon={<Logout sx={{ fontSize: 16 }} />} onClick={handleLogout}>
