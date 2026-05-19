@@ -886,7 +886,7 @@ useEffect(() => {
                     <ActivityFeed /> 
                     <SideList title="Favorites"   movies={best}  />
                     <SideList title="Worst Watch" movies={worst} worst />
-                    
+
                     <SocialWidget />
                   </Stack>
                 </Box>
@@ -897,10 +897,10 @@ useEffect(() => {
             <Grid item xs={12} sx={{ flex: { md: "1 1 0" }, minWidth: 0, overflow: "hidden" }}>
 
               {/* Stat bar */}
-              {!loading && totalMovies > 0 && (
+              {!loading && safeMovies.length > 0 && (
                 <div className="stat-bar fade-up">
                   <div className="stat-item">
-                    <span className="stat-num">{totalMovies}</span>
+                    <span className="stat-num">{safeMovies.length}</span>
                     <span className="stat-label">movies</span>
                   </div>
                   <div className="stat-divider" />
