@@ -30,7 +30,7 @@ function useFonts() {
   }, []);
 }
 
-const MOVIES_PER_PAGE = 15;
+const MOVIES_PER_PAGE = 12;
 
 /* ── Sort options matching backend ── */
 const SORT_OPTIONS = [
@@ -1034,7 +1034,7 @@ useEffect(() => {
                 </div>
 
               )}
-//load more button
+
               {!loading && hasMore && !search && (
   <Box sx={{ display: "flex", justifyContent: "center", mt: 4, mb: 2 }}>
     <Button

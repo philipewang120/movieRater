@@ -126,7 +126,8 @@ app.get("/movies", verifyToken, apiLimiter, async (req, res) => {
 
   try {
 
-    const { sort } = req.query;
+    const { sort, page = 0, limit = 12 } = req.query;
+    const offset = parseInt(page) * parseInt(limit);
 
     let orderBy = "id DESC";
 //sorting from backend based on query param, default is "id DESC" (newest first)
@@ -156,16 +157,21 @@ app.get("/movies", verifyToken, apiLimiter, async (req, res) => {
         orderBy = "my_rating ASC";
         break;
     }
-
-    const result = await db.query(
-      `SELECT * FROM movies WHERE user_id = $1 ORDER BY ${orderBy}`,
+      const countResult = await db.query(
+      "SELECT COUNT(*) FROM movies WHERE user_id = $1",
       [req.user.id]
     );
+// Send total count in header for frontend pagination
+   const result = await db.query(
+      `SELECT * FROM movies WHERE user_id = $1 ORDER BY ${orderBy} LIMIT $2 OFFSET $3`,
+      [req.user.id, parseInt(limit), offset]
+    );
 
-    res.json({
-      movies: result.rows,
+   res.json({
+      movies:      result.rows,
+      total:       parseInt(countResult.rows[0].count),
       profile_pic: req.user.profile_pic,
-      email: req.user.email
+      email:       req.user.email,
     });
 
   } catch (err) {
