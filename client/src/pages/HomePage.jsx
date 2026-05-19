@@ -991,7 +991,7 @@ const initial    = email.charAt(0).toUpperCase();
               <div className="section-label">
                 {search
                   ? `${displayed.length} result${displayed.length !== 1 ? "s" : ""} for "${search}"`
-                  : `${safeMovies.length} movie${safeMovies.length !== 1 ? "s" : ""} watched`}
+                  : `${totalMovies} movie${totalMovies !== 1 ? "s" : ""} in your list`}
               </div>
 
               {/* Skeletons */}
