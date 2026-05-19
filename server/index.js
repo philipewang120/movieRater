@@ -14,6 +14,7 @@ import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
+import rateLimit from "express-rate-limit";
 
 
 dotenv.config();
@@ -35,6 +36,22 @@ app.use(
     credentials: true,
   })
 );
+// Apply rate limiting to auth routes to prevent brute-force attacks
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // 10 attempts per window
+  message: { message: "Too many attempts, please try again in 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+//Api rate limiter to prevent abuse
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,                  // 100 requests per window
+  message: { message: "Too many requests, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
@@ -105,7 +122,7 @@ async function ensureUsername(userId, email) {
 
 app.use(passport.initialize());
 //get all movies from db for specific user
-app.get("/movies", verifyToken, async (req, res) => {
+app.get("/movies", verifyToken, apiLimiter, async (req, res) => {
 
   try {
 
@@ -237,7 +254,7 @@ app.get("/top-movies", async (req, res) => {
   }
 });
 
-app.post("/add", verifyToken, async (req, res) => {
+app.post("/add", verifyToken, apiLimiter, async (req, res) => {
   try {
     const {
       movie_id,
@@ -320,7 +337,7 @@ app.post("/add", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/edit", verifyToken, async (req, res) => {
+app.post("/edit", verifyToken, apiLimiter, async (req, res) => {
   const {
     movieId,
     my_rating,
@@ -354,7 +371,7 @@ app.post("/edit", verifyToken, async (req, res) => {
 });
 
 // upload profile picture, save URL to db, return new token with updated picture URL in payload
-app.post("/profile/avatar", verifyToken, upload.single("avatar"), async (req, res) => {
+app.post("/profile/avatar", verifyToken, apiLimiter, upload.single("avatar"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -424,7 +441,7 @@ app.post("/api/logout", (req, res) => {
 
 
 // ── GOOGLE 
-app.get("/auth/google",
+app.get("/auth/google", authLimiter,
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
@@ -448,10 +465,12 @@ app.get("/auth/google/mymovies",
 
 // ── FACEBOOK 
 app.get("/auth/facebook",
+  authLimiter,
   passport.authenticate("facebook", { scope: ["email"] })
 );
 
 app.get("/auth/facebook/callback",
+  authLimiter,
   passport.authenticate("facebook", {
     failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
     session: false
@@ -468,7 +487,7 @@ app.get("/auth/facebook/callback",
 }
 );
 // ── GITHUB 
-app.get("/auth/github",
+app.get("/auth/github", authLimiter,
   passport.authenticate("github", { scope: ["user:email"] })
 );
 
@@ -489,7 +508,7 @@ app.get("/auth/github/mymovies",
 }
 );
 
-app.post("/login", (req, res, next) => {
+app.post("/login", authLimiter, (req, res, next) => {
   passport.authenticate("local", async (err, user, info) => {  
     if (err) {
       return res.status(500).json({ message: "Server error" });
@@ -512,7 +531,7 @@ app.post("/login", (req, res, next) => {
   })(req, res, next);
 });
 
-app.post("/register", async (req, res) => {
+app.post("/register", authLimiter, async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const providedUsername = req.body.username?.trim();

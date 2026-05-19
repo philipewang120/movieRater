@@ -58,6 +58,21 @@ function MoodIcon({ mood, size = 16 }) {
 }
 
 function LandingPage() {
+  
+  // Redirect to /home if already logged in
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.exp * 1000 > Date.now()) {
+        navigate("/home"); // already logged in, skip landing page
+        return;
+      }
+    } catch (_) {}
+  }
+}, []);
+
   useFonts();
   const navigate = useNavigate();
   const [movieTitle, setMovieTitle] = useState("");

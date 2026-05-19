@@ -779,7 +779,7 @@ if (token) {
         <AppBar position="sticky" className="nav-bar" elevation={0}>
         
 <Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
-  <Box className="nav-logo" onClick={() => navigate("/")}>
+  <Box className="nav-logo" onClick={() => navigate("/home")}>
     <div className="logo-icon"><Movie sx={{ fontSize: 20 }} /></div>
     MOVIE RATER
   </Box>
