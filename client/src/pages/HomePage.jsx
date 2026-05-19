@@ -30,7 +30,7 @@ function useFonts() {
   }, []);
 }
 
-const MOVIES_PER_PAGE = 12;
+const MOVIES_PER_PAGE = 10;
 
 /* ── Sort options matching backend ── */
 const SORT_OPTIONS = [
@@ -882,10 +882,11 @@ useEffect(() => {
               <div className="sidebar-scroll-wrap">
                 <Box sx={{ position: "sticky", top: 90, width: "100%", maxHeight: "calc(100vh - 110px)", overflowY: "auto", overflowX: "hidden", pr: "4px", pb: "48px" }}>
                   <Stack spacing={3}>
+                    <TmdbTopRated />
                     <ActivityFeed /> 
                     <SideList title="Favorites"   movies={best}  />
                     <SideList title="Worst Watch" movies={worst} worst />
-                    <TmdbTopRated />
+                    
                     <SocialWidget />
                   </Stack>
                 </Box>
