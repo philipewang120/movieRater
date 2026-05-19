@@ -126,7 +126,7 @@ app.get("/movies", verifyToken, apiLimiter, async (req, res) => {
 
   try {
 
-    const { sort, page = 0, limit = 12 } = req.query;
+    const { sort, page = 0, limit = 10 } = req.query;
     const offset = parseInt(page) * parseInt(limit);
 
     let orderBy = "id DESC";
@@ -161,18 +161,27 @@ app.get("/movies", verifyToken, apiLimiter, async (req, res) => {
       "SELECT COUNT(*) FROM movies WHERE user_id = $1",
       [req.user.id]
     );
-// Send total count in header for frontend pagination
+    const statsResult = await db.query(
+  `SELECT 
+    ROUND(AVG(my_rating)) as avg_rating,
+    (SELECT title FROM movies WHERE user_id = $1 ORDER BY my_rating DESC LIMIT 1) as top_rated_title
+   FROM movies WHERE user_id = $1`,
+  [req.user.id]
+);
+
    const result = await db.query(
       `SELECT * FROM movies WHERE user_id = $1 ORDER BY ${orderBy} LIMIT $2 OFFSET $3`,
       [req.user.id, parseInt(limit), offset]
     );
 
    res.json({
-      movies:      result.rows,
-      total:       parseInt(countResult.rows[0].count),
-      profile_pic: req.user.profile_pic,
-      email:       req.user.email,
-    });
+  movies:          result.rows,
+  total:           parseInt(countResult.rows[0].count),
+  avg_rating:      parseInt(statsResult.rows[0].avg_rating) || 0,
+  top_rated_title: statsResult.rows[0].top_rated_title || null,
+  profile_pic:     req.user.profile_pic,
+  email:           req.user.email,
+});
 
   } catch (err) {
     console.error(err);

@@ -641,6 +641,9 @@ function HomePage() {
   const [hasMore,     setHasMore]     = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalMovies, setTotalMovies] = useState(0);
+  const [avgRating,      setAvgRating]      = useState(0);
+  const [topRatedTitle,  setTopRatedTitle]  = useState(null);
+
   const token = getToken();
  
   
@@ -695,6 +698,8 @@ async function fetchMovies(sort = sortBy, pageNum = 0, append = false) {
     }
 
     setTotalMovies(d?.total ?? 0);
+    setAvgRating(d?.avg_rating ?? 0);
+    setTopRatedTitle(d?.top_rated_title ?? null);
     setProfilePic(d?.profile_pic ?? "");
     setEmail(d?.email ? d.email.split("@")[0] : "user");
 
@@ -788,16 +793,14 @@ useEffect(() => {
     }
   }
 
-
-  const safeMovies = Array.isArray(movies) ? movies : [];
-  const best       = [...safeMovies].sort((a, b) => b.my_rating - a.my_rating).slice(0, 5);
-  const worst      = [...safeMovies].sort((a, b) => a.my_rating - b.my_rating).slice(0, 5);
-  const displayed  = search.trim()
-    ? safeMovies.filter((m) => m.title.toLowerCase().includes(search.toLowerCase()))
-    : safeMovies;
-  const avgRating  = safeMovies.length ? (safeMovies.reduce((s, m) => s + m.my_rating, 0) / safeMovies.length).toFixed(0) : 0;
-  const topRated   = safeMovies.length ? [...safeMovies].sort((a, b) => b.my_rating - a.my_rating)[0] : null;
-  const initial    = email.charAt(0).toUpperCase();
+//derived values for sidebar and display
+const safeMovies = Array.isArray(movies) ? movies : [];
+const best       = [...safeMovies].sort((a, b) => b.my_rating - a.my_rating).slice(0, 5);
+const worst      = [...safeMovies].sort((a, b) => a.my_rating - b.my_rating).slice(0, 5);
+const displayed  = search.trim()
+  ? safeMovies.filter((m) => m.title.toLowerCase().includes(search.toLowerCase()))
+  : safeMovies;
+const initial    = email.charAt(0).toUpperCase();
 
   return (
     <>
@@ -897,30 +900,34 @@ useEffect(() => {
             <Grid item xs={12} sx={{ flex: { md: "1 1 0" }, minWidth: 0, overflow: "hidden" }}>
 
               {/* Stat bar */}
-              {!loading && safeMovies.length > 0 && (
-                <div className="stat-bar fade-up">
-                  <div className="stat-item">
-                    <span className="stat-num">{safeMovies.length}</span>
-                    <span className="stat-label">movies</span>
-                  </div>
-                  <div className="stat-divider" />
-                  <div className="stat-item">
-                    <span className="stat-num">{avgRating}</span>
-                    <span className="stat-label">avg score</span>
-                  </div>
-                  {topRated && (
-                    <>
-                      <div className="stat-divider" />
-                      <div className="stat-item" style={{ minWidth: 0, overflow: "hidden" }}>
-                        <span style={{ fontSize: 13, color: "var(--accent2)", fontFamily: "var(--font-body)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {topRated.title}
-                        </span>
-                        <span className="stat-label" style={{ marginLeft: 5 }}>top rated</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+{!loading && totalMovies > 0 && (
+  <div className="stat-bar fade-up">
+    <div className="stat-item">
+      <span className="stat-num">{totalMovies}</span>
+      <span className="stat-label">movies</span>
+    </div>
+    <div className="stat-divider" />
+    <div className="stat-item">
+      <span className="stat-num">{avgRating}</span>
+      <span className="stat-label">avg score</span>
+    </div>
+    {topRatedTitle && (
+      <>
+        <div className="stat-divider" />
+        <div className="stat-item" style={{ minWidth: 0, overflow: "hidden" }}>
+          <span style={{
+            fontSize: 13, color: "var(--accent2)",
+            fontFamily: "var(--font-body)", fontWeight: 600,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+          }}>
+            {topRatedTitle}
+          </span>
+          <span className="stat-label" style={{ marginLeft: 5 }}>top rated</span>
+        </div>
+      </>
+    )}
+  </div>
+)}
 
               {/* Toolbar: sort + view toggle + section label */}
               <div className="toolbar-row fade-up">
