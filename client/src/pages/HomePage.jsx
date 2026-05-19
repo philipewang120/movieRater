@@ -30,7 +30,7 @@ function useFonts() {
   }, []);
 }
 
-
+const MOVIES_PER_PAGE = 15;
 
 /* ── Sort options matching backend ── */
 const SORT_OPTIONS = [
@@ -637,7 +637,13 @@ function HomePage() {
   const [sortBy, setSortBy] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showSearch, setShowSearch] = useState(false);
+  const [page,        setPage]        = useState(0);
+  const [hasMore,     setHasMore]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalMovies, setTotalMovies] = useState(0);
   const token = getToken();
+ 
+  
 
 
   let currentUser = null;
@@ -645,71 +651,100 @@ if (token) {
   try { currentUser = JSON.parse(atob(token.split(".")[1])); } catch (_) {}
 }
 
-  async function fetchMovies(sort = sortBy) {
-    try {
-      setLoading(true);
+async function fetchMovies(sort = sortBy, pageNum = 0, append = false) {
+  if (pageNum === 0) setLoading(true);
+  else setLoadingMore(true);
 
-      const query = sort ? `?sort=${sort}` : "";
+  try {
+    // Build query params
+    const params = new URLSearchParams();
+    if (sort) params.set("sort", sort);
+    params.set("page", pageNum);
+    params.set("limit", MOVIES_PER_PAGE);
 
-      const res = await apiFetch(`/movies${query}`);
-      if (!res) return;
-       if (res.status === 401) {
-      localStorage.removeItem("token");{
-        navigate("/login");
-      }
+    const res = await apiFetch(`/movies?${params.toString()}`);
+    if (!res) return;
+
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      navigate("/login");
       return;
     }
 
-      const d = await res.json();
+    const d = await res.json();
+    const raw = Array.isArray(d.movies) ? d.movies : [];
 
-      const raw = Array.isArray(d.movies) ? d.movies : [];
+    const normalized = raw.map((m) => ({
+      id:            m.id,
+      tmdb_id:       m.movie_id ?? m.id,
+      title:         m.title ?? "Untitled",
+      poster_path:   m.poster_path ?? null,
+      tmdb_rating:   m.tmdb_rating ?? null,
+      my_rating:     Number(m.my_rating ?? 50),
+      remarks:       m.remarks ?? "",
+      release_date:  m.release_date ?? "",
+      watched_month: m.watched_month ?? null,
+      watched_year:  m.watched_year ?? null,
+    }));
 
-      const normalized = raw.map((m) => ({
-        id: m.id,
-        tmdb_id: m.movie_id ?? m.id,
-        title: m.title ?? "Untitled",
-        poster_path: m.poster_path ?? null,
-        tmdb_rating: m.tmdb_rating ?? null,
-        my_rating: Number(m.my_rating ?? 50),
-        remarks: m.remarks ?? "",
-        release_date: m.release_date ?? "",
-        watched_month: m.watched_month ?? null,
-        watched_year: m.watched_year ?? null,
-      }));
-
+    // Append for load more, replace for fresh load
+    if (append) {
+      setMovies(prev => [...prev, ...normalized]);
+    } else {
       setMovies(normalized);
-      setProfilePic(d?.profile_pic ?? "");
-      setEmail(d?.email ? d.email.split("@")[0] : "user");
-
-    } catch (err) {
-      console.log("fetchMovies error:", err);
-      toast("Failed to load movies", "error");
-
-    } finally {
-      setLoading(false);
     }
+
+    setTotalMovies(d?.total ?? 0);
+    setProfilePic(d?.profile_pic ?? "");
+    setEmail(d?.email ? d.email.split("@")[0] : "user");
+
+    // If we got fewer than a full page, no more to load
+    setHasMore(raw.length === MOVIES_PER_PAGE);
+
+  } catch (err) {
+    console.log("fetchMovies error:", err);
+    toast("Failed to load movies", "error");
+  } finally {
+    setLoading(false);
+    setLoadingMore(false);
   }
+}
 
-  useEffect(() => {
+function handleLoadMore() {
+  const nextPage = page + 1;
+  setPage(nextPage);
+  fetchMovies(sortBy, nextPage, true);
+}
 
-      // Fix Facebook #_=_
+function handleSortChange(newSort) {
+  setSortBy(newSort);
+  setPage(0);
+  setHasMore(true);
+  fetchMovies(newSort, 0, false);
+}
+
+useEffect(() => {
+  // Fix Facebook #_=_
   if (window.location.hash === "#_=_") {
     window.history.replaceState(null, "", window.location.pathname);
   }
-    //save token from URL (after social login) and clean URL
-    const params = new URLSearchParams(window.location.search);
-    const URLtoken = params.get("token");
 
-    if (URLtoken) {
-      saveToken(URLtoken);
-      window.history.replaceState({}, "", "/home");
-    }
-    // If no token and not coming from social login, redirect to login
-    const token = localStorage.getItem("token");
-     if (!token) {
+  // Save OAuth token from URL if present
+  const params = new URLSearchParams(window.location.search);
+  const URLtoken = params.get("token");
+  if (URLtoken) {
+    localStorage.setItem("token", URLtoken);
+    window.history.replaceState({}, "", "/home");
+  }
+
+  // Check token exists
+  const token = localStorage.getItem("token");
+  if (!token) {
     navigate("/login");
     return;
-  }//check if token has expired
+  }
+
+  // Check token not expired
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (payload.exp * 1000 < Date.now()) {
@@ -723,13 +758,8 @@ if (token) {
     return;
   }
 
-    fetchMovies();
-  }, []);
-
-  function handleSortChange(newSort) {
-    setSortBy(newSort);
-    fetchMovies(newSort);
-  }
+  fetchMovies(sortBy, 0, false);
+}, []);
 
   async function handleLogout() {
     deleteToken();
@@ -866,10 +896,10 @@ if (token) {
             <Grid item xs={12} sx={{ flex: { md: "1 1 0" }, minWidth: 0, overflow: "hidden" }}>
 
               {/* Stat bar */}
-              {!loading && safeMovies.length > 0 && (
+              {!loading && totalMovies > 0 && (
                 <div className="stat-bar fade-up">
                   <div className="stat-item">
-                    <span className="stat-num">{safeMovies.length}</span>
+                    <span className="stat-num">{totalMovies}</span>
                     <span className="stat-label">movies</span>
                   </div>
                   <div className="stat-divider" />
@@ -1002,7 +1032,44 @@ if (token) {
                     />
                   ))}
                 </div>
+
               )}
+//load more button
+              {!loading && hasMore && !search && (
+  <Box sx={{ display: "flex", justifyContent: "center", mt: 4, mb: 2 }}>
+    <Button
+      onClick={handleLoadMore}
+      disabled={loadingMore}
+      sx={{
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: "12px",
+        color: "#e0e0e8",
+        fontFamily: "var(--font-body)",
+        fontSize: 14,
+        fontWeight: 500,
+        padding: "10px 40px",
+        textTransform: "none",
+        transition: "all 0.2s",
+        "&:hover": {
+          background: "var(--raised)",
+          borderColor: "rgba(255,255,255,0.18)",
+        },
+      }}
+    >
+      {loadingMore ? "Loading…" : "Load more movies"}
+    </Button>
+  </Box>
+)}
+
+{/* All movies loaded message */}
+{!loading && !hasMore && totalMovies > MOVIES_PER_PAGE && (
+  <Box sx={{ textAlign: "center", mt: 4, mb: 2 }}>
+    <Typography sx={{ color: "var(--muted)", fontSize: 13 }}>
+      You've seen all {totalMovies} movies
+    </Typography>
+  </Box>
+)}
             </Grid>
 
           </Grid>
