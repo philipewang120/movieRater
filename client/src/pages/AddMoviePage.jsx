@@ -410,8 +410,9 @@ async function handleSubmit() {
   setError("");
   setLoading(true);
   try {
+     let res;
     if (isEdit) {
-      await apiFetch("/edit", {
+      res = await apiFetch("/edit", {
         method: "POST",
         body: JSON.stringify({
           movieId: incoming.id,
@@ -422,7 +423,7 @@ async function handleSubmit() {
         }),
       });
     } else {
-      await apiFetch("/add", {
+      res = await apiFetch("/add", {
         method: "POST",
         body: JSON.stringify({
           movie_id:     displayMovie.id,
