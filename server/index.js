@@ -121,7 +121,7 @@ async function ensureUsername(userId, email) {
 }
 
 app.use(passport.initialize());
-//get all movies from db for specific user
+//get all movies and data from db for specific user
 app.get("/movies", verifyToken, apiLimiter, async (req, res) => {
 
   try {
@@ -268,6 +268,8 @@ app.get("/top-movies", async (req, res) => {
     });
   }
 });
+//ping backend to avoid it going to sleep
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 app.post("/add", verifyToken, apiLimiter, async (req, res) => {
   try {
