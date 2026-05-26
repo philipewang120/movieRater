@@ -33,7 +33,7 @@ const AFRICAN_COUNTRY_TABS = {
 };
 
 const allowedOrigins = [
-  "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app",
+  "africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app",
 ];
 
 app.set("trust proxy", 1);
