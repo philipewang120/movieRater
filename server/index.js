@@ -505,7 +505,7 @@ app.get("/auth/google/mymovies",
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.redirect(`africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
+    res.redirect( `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
 }
 );
@@ -530,7 +530,7 @@ app.get("/auth/facebook/callback",
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.redirect(`africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
+    res.redirect( `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
 }
 );
@@ -551,7 +551,7 @@ app.get("/auth/github/mymovies",
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.redirect(`https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
+    res.redirect( `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
 }
 );
