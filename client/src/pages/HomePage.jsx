@@ -809,7 +809,7 @@ const initial    = email.charAt(0).toUpperCase();
       <Box sx={{ minHeight: "100vh", bgcolor: "var(--ink)" }}>
 
         {/* NAVBAR */}
-       <AppBar position="sticky" className="nav-bar" elevation={0}>
+ <AppBar position="sticky" className="nav-bar" elevation={0}>
   <Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
     
     {/* Logo */}
