@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Box, Button, InputBase, Paper, Typography, Stack } from "@mui/material";
 import { Add, Movie, Favorite, SentimentVeryDissatisfied, SentimentNeutral } from "@mui/icons-material";
 import "./LandingPage.css";
-import dune2 from "../assets/dune2.jpeg";
 import logo from "../assets/logo.png";
 
 /* ─── Inject Google Fonts ─── */
