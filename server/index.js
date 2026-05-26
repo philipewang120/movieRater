@@ -23,6 +23,14 @@ const app = express();
 
 const port = process.env.PORT || 3000;
 const saltRounds = 10;
+const AFRICAN_COUNTRY_TABS = {
+  all:  { countries: ["NG","ZA","EG","MA","GH","KE","TN","DZ","CM","SN","CI","TZ","UG","AO"], excludeLangs: ["yo","ig"] },
+  NG:   { countries: ["NG"], langs: ["en"] },
+  CM:   { countries: ["CM"], langs: ["en","fr"] },
+  ZA:   { countries: ["ZA"], langs: ["en","af"] },
+  GH:   { countries: ["GH"], langs: ["en"] },
+  EG:   { countries: ["EG"], langs: ["ar","en"] },
+};
 
 const allowedOrigins = [
   "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app",
@@ -97,6 +105,21 @@ function verifyToken(req, res, next) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
+// middleware to verify if user is an admin 
+function verifyAdmin(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.role || !["admin", "superadmin"].includes(decoded.role)) {
+      return res.status(403).json({ message: "Forbidden — admins only" });
+    }
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+}
 //auto-generate username if user doesnt have any from email input.
 function generateUsername(email) {
   return email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "_");
@@ -118,6 +141,14 @@ async function ensureUsername(userId, email) {
     return username;
   }
   return existing.rows[0].username;
+}
+//middleware to verify if user is an admin
+async function getUserRole(userId) {
+  const result = await db.query(
+    "SELECT role FROM admins WHERE user_id = $1",
+    [userId]
+  );
+  return result.rows.length > 0 ? result.rows[0].role : null;
 }
 
 app.use(passport.initialize());
@@ -535,10 +566,11 @@ app.post("/login", authLimiter, (req, res, next) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const username = await ensureUsername(user.id, user.email); 
+    const username = await ensureUsername(user.id, user.email);
+    const role = await getUserRole(user.id); 
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, profile_pic: user.profile_pic, username },
+      { id: user.id, email: user.email, profile_pic: user.profile_pic, username, role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -586,6 +618,7 @@ app.post("/register", authLimiter, async (req, res) => {
 
       // Use provided username, or auto-generate from email as fallback
       const username = providedUsername || await ensureUsername(user.id, user.email);
+      const role = await getUserRole(user.id);
       
       // Save it if it was provided (ensureUsername already saves if auto-generated)
       if (providedUsername) {
@@ -596,7 +629,7 @@ app.post("/register", authLimiter, async (req, res) => {
       }
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, profile_pic: user.profile_pic, username },
+        { id: user.id, email: user.email, profile_pic: user.profile_pic, username, role },
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
@@ -923,7 +956,7 @@ app.put("/profile/privacy", verifyToken, async (req, res) => {
   }
 });
 
-//FOLLOW SYTEM (follow/unfollow, followers/following lists, feed, notifications)
+//FOLLOW SYTEM ROUTES (follow/unfollow, followers/following lists, feed, notifications)
 // ── FOLLOW A USER ──────────────────────────────────────────
 app.post("/follow/:userId", verifyToken, async (req, res) => {
   const followingId = parseInt(req.params.userId);
@@ -1133,6 +1166,170 @@ app.get("/notifications/unread-count", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Failed to get count" });
   }
 });
+
+//AFRICAN PAGE ROUTES
+
+
+
+
+// ── TOP RATED AFRICAN MOVIES ───────────────────────────────
+app.get("/african/top-rated", async (req, res) => {
+  try {
+    const { country = "all", period = "year", page = 1 } = req.query;
+    const tab = AFRICAN_COUNTRY_TABS[country] || AFRICAN_COUNTRY_TABS.all;
+
+    const params = {
+      language:            "en-US",
+      sort_by:             "vote_average.desc",
+      "vote_count.gte":    50,
+      with_origin_country: tab.countries.join("|"),
+      include_adult:       false,
+      page,
+    };
+
+    // Period filter
+    const now = new Date();
+    if (period === "month") {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      params["primary_release_date.gte"] = firstDay.toISOString().split("T")[0];
+      params["primary_release_date.lte"] = now.toISOString().split("T")[0];
+    } else if (period === "year") {
+      params["primary_release_date.gte"] = `${now.getFullYear()}-01-01`;
+      params["primary_release_date.lte"] = now.toISOString().split("T")[0];
+    }
+    // "all time" — no date filter
+
+    // Language filter
+    if (tab.langs) {
+      params.with_original_language = tab.langs.join("|");
+    } else if (tab.excludeLangs) {
+      // TMDB doesn't support exclude language directly
+      // so we fetch more and filter on our side
+      params.page = 1;
+    }
+
+    const response = await axios.get(
+      "https://api.themoviedb.org/3/discover/movie",
+      {
+        params,
+        headers: {
+          accept:        "application/json",
+          Authorization: `Bearer ${process.env.TMDB_BEARER}`,
+        },
+      }
+    );
+
+    let results = response.data.results;
+
+    // Filter out excluded languages for "all africa" tab
+    if (tab.excludeLangs) {
+      results = results.filter(m => !tab.excludeLangs.includes(m.original_language));
+    }
+
+    res.json({
+      movies:        results,
+      total_pages:   response.data.total_pages,
+      total_results: response.data.total_results,
+      current_page:  response.data.page,
+    });
+
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ message: "Failed to fetch top rated African movies" });
+  }
+});
+
+// ── LATEST AFRICAN RELEASES (last 30 days) ─────────────────
+app.get("/african/latest", async (req, res) => {
+  try {
+    const { country = "all", page = 1 } = req.query;
+    const tab = AFRICAN_COUNTRY_TABS[country] || AFRICAN_COUNTRY_TABS.all;
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const params = {
+      language:                    "en-US",
+      sort_by:                     "release_date.desc",
+      "vote_count.gte":            5, // lower threshold for latest — new releases have fewer votes
+      with_origin_country:         tab.countries.join("|"),
+      "primary_release_date.gte":  thirtyDaysAgo.toISOString().split("T")[0],
+      "primary_release_date.lte":  now.toISOString().split("T")[0],
+      include_adult:               false,
+      page,
+    };
+
+    if (tab.langs) {
+      params.with_original_language = tab.langs.join("|");
+    }
+
+    const response = await axios.get(
+      "https://api.themoviedb.org/3/discover/movie",
+      {
+        params,
+        headers: {
+          accept:        "application/json",
+          Authorization: `Bearer ${process.env.TMDB_BEARER}`,
+        },
+      }
+    );
+
+    let results = response.data.results;
+
+    if (tab.excludeLangs) {
+      results = results.filter(m => !tab.excludeLangs.includes(m.original_language));
+    }
+
+    res.json({
+      movies:        results,
+      total_pages:   response.data.total_pages,
+      total_results: response.data.total_results,
+      current_page:  response.data.page,
+    });
+
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ message: "Failed to fetch latest African movies" });
+  }
+});
+
+// ── FEATURED AFRICAN FILM (hero) ───────────────────────────
+app.get("/african/featured", async (req, res) => {
+  try {
+    const now = new Date();
+
+    const response = await axios.get(
+      "https://api.themoviedb.org/3/discover/movie",
+      {
+        params: {
+          language:            "en-US",
+          sort_by:             "vote_average.desc",
+          "vote_count.gte":    100,
+          with_origin_country: "NG|ZA|EG|CM|GH|KE|MA",
+          "primary_release_date.gte": `${now.getFullYear()}-01-01`,
+          include_adult:       false,
+          page:                1,
+        },
+        headers: {
+          accept:        "application/json",
+          Authorization: `Bearer ${process.env.TMDB_BEARER}`,
+        },
+      }
+    );
+
+    const results = response.data.results.filter(
+      m => !["yo", "ig"].includes(m.original_language) && m.backdrop_path
+    );
+
+    // Return top result as featured
+    res.json(results[0] || null);
+
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ message: "Failed to fetch featured film" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

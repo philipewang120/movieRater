@@ -12,7 +12,7 @@ import {
   Add, Favorite, SentimentVeryDissatisfied, SentimentNeutral,
   Logout, Search, Movie, Star, Instagram, Twitter, YouTube,
   OpenInNew, TrendingUp, Edit, Delete,
-  ViewModule, ViewList, Sort,PersonSearch, Notifications, NotificationsNone, 
+  ViewModule, ViewList, Sort,PersonSearch, Notifications, NotificationsNone, Public, 
 } from "@mui/icons-material";
 
 
@@ -809,60 +809,115 @@ const initial    = email.charAt(0).toUpperCase();
       <Box sx={{ minHeight: "100vh", bgcolor: "var(--ink)" }}>
 
         {/* NAVBAR */}
-        <AppBar position="sticky" className="nav-bar" elevation={0}>
-        
-<Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
-  <Box className="nav-logo" onClick={() => navigate("/home")}>
-    <div className="logo-icon"><Movie sx={{ fontSize: 20 }} /></div>
-    MOVIE RATER
-  </Box>
-  <Box sx={{ flex: 1 }} />
-  <Box className="search-wrap">
-    <Search sx={{ color: "var(--muted)", fontSize: 18 }} />
-    <input
-      placeholder="Search your movies…"
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-  </Box>
-  <Box sx={{ flex: 1 }} />
-  <Stack direction="row" spacing={1} alignItems="center">
+       <AppBar position="sticky" className="nav-bar" elevation={0}>
+  <Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
+    
+    {/* Logo */}
+    <Box className="nav-logo" onClick={() => navigate("/home")}>
+      <div className="logo-icon"><Movie sx={{ fontSize: 20 }} /></div>
+      MOVIE RATER
+    </Box>
 
-    {/* User search icon */}
-    <Tooltip title="Find users">
-      <button className="nav-icon-btn" onClick={() => setShowSearch(true)}>
-        <PersonSearch sx={{ fontSize: 22 }} />
-      </button>
-    </Tooltip>
+    <Box sx={{ flex: 1 }} />
 
-    {/* Notifications */}
-    <NotificationsBell />
+    {/* Movie search */}
+    <Box className="search-wrap">
+      <Search sx={{ color: "var(--muted)", fontSize: 18 }} />
+      <input
+        placeholder="Search your movies…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+    </Box>
 
-    {/* Avatar — clickable to own profile */}
-    <Tooltip title="My profile">
-      <div
-        style={{ cursor: "pointer" }}
-        onClick={() => navigate(`/profile/${currentUser?.username}`)}
-      >
-        {profilePic
-          ? <Avatar src={profilePic} sx={{ width: 38, height: 38 }} />
-          : <div className="nav-avatar-initials">{initial}</div>
-        }
-      </div>
-    </Tooltip>
+    <Box sx={{ flex: 1 }} />
 
-    <Typography sx={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500, color: "#e0e0e8", display: { xs: "none", sm: "block" } }}>
-      Hello, {email}!
-    </Typography>
+    <Stack direction="row" spacing={1} alignItems="center">
 
-    <Tooltip title="Log out">
-      <Button className="logout-btn" size="small" startIcon={<Logout sx={{ fontSize: 16 }} />} onClick={handleLogout}>
-        Log out
-      </Button>
-    </Tooltip>
-  </Stack>
-</Toolbar>
-        </AppBar>
+      {/* African Cinema link */}
+      <Tooltip title="African Cinema">
+        <Button
+          onClick={() => navigate("/african")}
+          sx={{
+            background: "rgba(232,197,71,0.08)",
+            border: "1px solid rgba(232,197,71,0.2)",
+            borderRadius: "10px",
+            color: "var(--accent)",
+            fontFamily: "var(--font-body)",
+            fontWeight: 600,
+            fontSize: 12,
+            textTransform: "none",
+            padding: "5px 12px",
+            whiteSpace: "nowrap",
+            display: { xs: "none", md: "flex" }, // hide on mobile
+            gap: "6px",
+            transition: "all 0.2s",
+            "&:hover": {
+              background: "rgba(232,197,71,0.15)",
+              borderColor: "rgba(232,197,71,0.4)",
+            },
+          }}
+        >
+          🌍 African Cinema
+        </Button>
+      </Tooltip>
+
+      {/* African Cinema icon — mobile only */}
+      <Tooltip title="African Cinema">
+        <button
+          className="nav-icon-btn"
+          onClick={() => navigate("/african")}
+          style={{ display: "flex" }}
+          sx={{ display: { xs: "flex", md: "none" } }}
+        >
+          <Public sx={{ fontSize: 22, color: "var(--accent)" }} />
+        </button>
+      </Tooltip>
+
+      {/* User search icon */}
+      <Tooltip title="Find users">
+        <button className="nav-icon-btn" onClick={() => setShowSearch(true)}>
+          <PersonSearch sx={{ fontSize: 22 }} />
+        </button>
+      </Tooltip>
+
+      {/* Notifications */}
+      <NotificationsBell />
+
+      {/* Avatar — clickable to own profile */}
+      <Tooltip title="My profile">
+        <div
+          style={{ cursor: "pointer" }}
+          onClick={() => navigate(`/profile/${currentUser?.username}`)}
+        >
+          {profilePic
+            ? <Avatar src={profilePic} sx={{ width: 38, height: 38 }} />
+            : <div className="nav-avatar-initials">{initial}</div>
+          }
+        </div>
+      </Tooltip>
+
+      <Typography sx={{
+        fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500,
+        color: "#e0e0e8", display: { xs: "none", sm: "block" }
+      }}>
+        Hello, {email}!
+      </Typography>
+
+      <Tooltip title="Log out">
+        <Button
+          className="logout-btn"
+          size="small"
+          startIcon={<Logout sx={{ fontSize: 16 }} />}
+          onClick={handleLogout}
+        >
+          Log out
+        </Button>
+      </Tooltip>
+
+    </Stack>
+  </Toolbar>
+</AppBar>
 
         <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }}>
 
