@@ -24,7 +24,7 @@ function useFonts() {
 
 /* ─── Demo movie data ─── */
 const DEMO_MOVIES = [
-  { id: 1, title: "Dune: Part Two",            mood: "love",    tmdb: 8.3, mine: 9, remarks: "Visually spectacular. Villeneuve at his best.", poster: dune2 },
+  { id: 1, title: "Dune: Part Two",            mood: "love",    tmdb: 8.3, mine: 9, remarks: "Visually spectacular. Villeneuve at his best.", poster: null },
   { id: 2, title: "The Grand Budapest Hotel",  mood: "love",    tmdb: 8.1, mine: 8, remarks: "Wes Anderson charm from start to finish.",       poster: null },
   { id: 3, title: "Oppenheimer",               mood: "love",    tmdb: 8.5, mine: 9, remarks: "Three hours that felt like one.",                 poster: null },
   { id: 4, title: "Saltburn",                  mood: "neutral", tmdb: 7.1, mine: 6, remarks: "Style over substance, but unforgettable.",        poster: null },
