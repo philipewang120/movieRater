@@ -33,7 +33,7 @@ const AFRICAN_COUNTRY_TABS = {
 };
 
 const allowedOrigins = [
-  "africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app",
+   "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app",
 ];
 
 app.set("trust proxy", 1);
