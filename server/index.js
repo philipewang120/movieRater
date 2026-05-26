@@ -495,7 +495,7 @@ app.get("/auth/google", authLimiter,
 
 app.get("/auth/google/mymovies",
   passport.authenticate("google", {
-    failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
+    failureRedirect: "https:/africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
     session: false
   }),
   (req, res) => {
@@ -505,7 +505,7 @@ app.get("/auth/google/mymovies",
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
+    res.redirect(`africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
 }
 );
@@ -520,7 +520,7 @@ app.get("/auth/facebook",
 app.get("/auth/facebook/callback",
   authLimiter,
   passport.authenticate("facebook", {
-    failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
+    failureRedirect: "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
     session: false
   }),
   (req, res) => {
@@ -530,7 +530,7 @@ app.get("/auth/facebook/callback",
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
+    res.redirect(`africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
 }
 );
@@ -541,7 +541,7 @@ app.get("/auth/github", authLimiter,
 
 app.get("/auth/github/mymovies",
   passport.authenticate("github", {
-    failureRedirect: "https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/login",
+    failureRedirect: "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
     session: false
   }),
   (req, res) => {
@@ -551,7 +551,7 @@ app.get("/auth/github/mymovies",
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.redirect(`https://movie-rater-git-main-philipe-wang-s-projects.vercel.app/home?token=${token}`);
+    res.redirect(`https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
   });
 }
 );
@@ -687,7 +687,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://movierater-dac6.onrender.com/auth/google/mymovies",
+      callbackURL: "https://movie-rater-1a.onrender.com/auth/google/mymovies",
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     async (accessToken, refreshToken, profile, cb) => {
@@ -719,7 +719,7 @@ passport.use(
     {
       clientID: process.env.FACEBOOK_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-      callbackURL: "https://movierater-dac6.onrender.com/auth/facebook/callback",
+      callbackURL: "https://movie-rater-1a.onrender.com/auth/facebook/callback",
       profileFields: ["id", "displayName", "emails", "photos"]
     },
     async (accessToken, refreshToken, profile, cb) => {
@@ -750,7 +750,7 @@ passport.use(
     {
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: "https://movierater-dac6.onrender.com/auth/github/mymovies",
+      callbackURL: "https://movie-rater-1a.onrender.com/auth/github/mymovies",
       profileFields: ["id", "displayName", "emails", "photos"],
        scope: ["user:email"], 
     },
