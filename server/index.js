@@ -489,6 +489,10 @@ app.post("/api/logout", (req, res) => {
 
 
 // ── GOOGLE 
+app.get("/auth/google", authLimiter,
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
 app.get(
   "/auth/google/mymovies",
   passport.authenticate("google", {
