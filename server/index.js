@@ -489,25 +489,45 @@ app.post("/api/logout", (req, res) => {
 
 
 // ── GOOGLE 
-app.get("/auth/google", authLimiter,
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-app.get("/auth/google/mymovies",
+app.get(
+  "/auth/google/mymovies",
   passport.authenticate("google", {
-    failureRedirect: "https:/africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
-    session: false
+    failureRedirect:
+      "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
+    session: false,
   }),
-  (req, res) => {
-  ensureUsername(req.user.id, req.user.email).then((username) => {
-    const token = jwt.sign(
-      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    res.redirect( `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
-  });
-}
+  async (req, res) => {
+    try {
+      const username = await ensureUsername(
+        req.user.id,
+        req.user.email
+      );
+
+      const role = await getUserRole(req.user.id);
+
+      const token = jwt.sign(
+        {
+          id: req.user.id,
+          email: req.user.email,
+          profile_pic: req.user.profile_pic,
+          username,
+          role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      res.redirect(
+        `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`
+      );
+    } catch (err) {
+      console.error(err);
+
+      res.redirect(
+        "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login"
+      );
+    }
+  }
 );
 
 
@@ -523,16 +543,39 @@ app.get("/auth/facebook/callback",
     failureRedirect: "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
     session: false
   }),
-  (req, res) => {
-  ensureUsername(req.user.id, req.user.email).then((username) => {
-    const token = jwt.sign(
-      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    res.redirect( `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
-  });
-}
+  async (req, res) => {
+    try {
+      const username = await ensureUsername(
+        req.user.id,
+        req.user.email
+      );
+
+      const role = await getUserRole(req.user.id);
+
+      const token = jwt.sign(
+        {
+          id: req.user.id,
+          email: req.user.email,
+          profile_pic: req.user.profile_pic,
+          username,
+          role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      res.redirect(
+        `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`
+      );
+    } catch (err) {
+      console.error(err);
+
+      res.redirect(
+        "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login"
+      );
+    }
+  }
+
 );
 // ── GITHUB 
 app.get("/auth/github", authLimiter,
@@ -544,16 +587,38 @@ app.get("/auth/github/mymovies",
     failureRedirect: "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
     session: false
   }),
-  (req, res) => {
-  ensureUsername(req.user.id, req.user.email).then((username) => {
-    const token = jwt.sign(
-      { id: req.user.id, email: req.user.email, profile_pic: req.user.profile_pic, username },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    res.redirect( `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`);
-  });
-}
+  async (req, res) => {
+    try {
+      const username = await ensureUsername(
+        req.user.id,
+        req.user.email
+      );
+
+      const role = await getUserRole(req.user.id);
+
+      const token = jwt.sign(
+        {
+          id: req.user.id,
+          email: req.user.email,
+          profile_pic: req.user.profile_pic,
+          username,
+          role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      res.redirect(
+        `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`
+      );
+    } catch (err) {
+      console.error(err);
+
+      res.redirect(
+        "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login"
+      );
+    }
+  }
 );
 
 app.post("/login", authLimiter, (req, res, next) => {
