@@ -12,7 +12,8 @@ import {
   Add, Favorite, SentimentVeryDissatisfied, SentimentNeutral,
   Logout, Search, Movie, Star, Instagram, Twitter, YouTube,
   OpenInNew, TrendingUp, Edit, Delete,
-  ViewModule, ViewList, Sort,PersonSearch, Notifications, NotificationsNone, Public, 
+  ViewModule, ViewList, Sort,PersonSearch, Notifications,
+   NotificationsNone, Public, AdminPanelSettings,
 } from "@mui/icons-material";
 
 
@@ -881,6 +882,35 @@ const initial    = email.charAt(0).toUpperCase();
         </button>
       </Tooltip>
 
+      {/* admin button visible to only admin and super admin */}
+      {currentUser?.role && ["admin", "superadmin"].includes(currentUser.role) && (
+  <Tooltip title="Admin Dashboard">
+    <button
+      className="nav-icon-btn"
+      onClick={() => navigate("/admin")}
+      style={{
+        background: "rgba(255,107,107,0.08)",
+        border: "1px solid rgba(255,107,107,0.15)",
+        borderRadius: "8px",
+        color: "#ff6b6b",
+        padding: "6px 10px",
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 12,
+        fontFamily: "var(--font-body)",
+        fontWeight: 600,
+        cursor: "pointer",
+        transition: "all 0.2s",
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,107,107,0.15)"}
+      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,107,107,0.08)"}
+    >
+      <AdminPanelSettings sx={{ fontSize: 18 }} />
+      <span style={{ display: "none" }} className="admin-label">Admin</span>
+    </button>
+  </Tooltip>
+)}
       {/* Notifications */}
       <NotificationsBell />
 

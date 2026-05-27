@@ -625,25 +625,39 @@ function AfricanPage() {
       <div className="af-page">
 
         {/* ── NAV ── */}
-        <nav className="af-nav">
+<nav className="af-nav">
   <div className="af-logo" onClick={() => navigate("/home")}>
-    <div className="af-logo-icon">
-      <Movie sx={{ fontSize: 18 }} />
-    </div>
+    <div className="af-logo-icon"><Movie sx={{ fontSize: 18 }} /></div>
     MOVIE RATER
   </div>
 
   <span className="af-nav-badge">AFRICAN CINEMA</span>
-
-  <div className="af-nav-actions">
+  
+  {/* Nav actions */}
+  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
     <Button
-      className="af-nav-btn"
-      startIcon={<Add sx={{ fontSize: 15 }} />}
-      onClick={() => navigate("/african/submit")}
-    >
-      Submit Movie
-    </Button>
 
+      onClick={() => navigate("/african/submit")}
+      sx={{
+        background: "rgba(93,232,197,0.08)",
+        border: "1px solid rgba(93,232,197,0.2)",
+        borderRadius: "10px",
+        color: "var(--accent2)",
+        fontFamily: "var(--font-body)",
+        fontWeight: 600,
+        fontSize: 12,
+        textTransform: "none",
+        padding: "5px 14px",
+        transition: "all 0.2s",
+        "&:hover": {
+          background: "rgba(93,232,197,0.15)",
+          borderColor: "rgba(93,232,197,0.4)",
+        },
+      }}
+    >
+      + Submit a Film
+    </Button>
+    
     <Button
       className="af-nav-btn"
       startIcon={<ArrowBack sx={{ fontSize: 15 }} />}

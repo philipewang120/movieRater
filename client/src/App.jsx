@@ -9,6 +9,9 @@ import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import AfricanPage from "./pages/african/AfricanPage";
+import SubmitMoviePage from "./pages/african/SubmitMoviePage";
+import AdminDashboard  from "./pages/african/AdminDashboard";
+
 
 
 function App() {
@@ -24,6 +27,8 @@ function App() {
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/african" element={<AfricanPage />} />
+          <Route path="/african/submit" element={<SubmitMoviePage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
