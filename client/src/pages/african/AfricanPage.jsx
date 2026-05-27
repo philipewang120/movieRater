@@ -626,45 +626,33 @@ function AfricanPage() {
 
         {/* ── NAV ── */}
         <nav className="af-nav">
-          <div className="af-logo" onClick={() => navigate("/home")}>
-            <div className="af-logo-icon"><Movie sx={{ fontSize: 18 }} /></div>
-            MOVIE RATER
-          </div>
-          <span className="af-nav-badge">SUMBIT MOVIE</span>
-                <Tooltip title="submit movie">
-                  <Button
-                    onClick={() => navigate("/african/submit")}
-                    sx={{
-                      background: "rgba(232,197,71,0.08)",
-                      border: "1px solid rgba(232,197,71,0.2)",
-                      borderRadius: "10px",
-                      color: "var(--accent)",
-                      fontFamily: "var(--font-body)",
-                      fontWeight: 600,
-                      fontSize: 12,
-                      textTransform: "none",
-                      padding: "5px 12px",
-                      whiteSpace: "nowrap",
-                      display: { xs: "none", md: "flex" }, // hide on mobile
-                      gap: "6px",
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        background: "rgba(232,197,71,0.15)",
-                        borderColor: "rgba(232,197,71,0.4)",
-                      },
-                    }}
-                  >
-                    SUBMIT MOVIE
-                  </Button>
-                </Tooltip>
-          <Button
-            className="af-nav-btn"
-            startIcon={<ArrowBack sx={{ fontSize: 15 }} />}
-            onClick={() => navigate("/home")}
-          >
-            Back to Home
-          </Button>
-        </nav>
+  <div className="af-logo" onClick={() => navigate("/home")}>
+    <div className="af-logo-icon">
+      <Movie sx={{ fontSize: 18 }} />
+    </div>
+    MOVIE RATER
+  </div>
+
+  <span className="af-nav-badge">AFRICAN CINEMA</span>
+
+  <div className="af-nav-actions">
+    <Button
+      className="af-nav-btn"
+      startIcon={<Add sx={{ fontSize: 15 }} />}
+      onClick={() => navigate("/african/submit")}
+    >
+      Submit Movie
+    </Button>
+
+    <Button
+      className="af-nav-btn"
+      startIcon={<ArrowBack sx={{ fontSize: 15 }} />}
+      onClick={() => navigate("/home")}
+    >
+      Back to Home
+    </Button>
+  </div>
+</nav>
 
         {/* ── HERO ── */}
         <div className="af-hero">
