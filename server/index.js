@@ -1237,11 +1237,7 @@ app.get("/notifications/unread-count", verifyToken, async (req, res) => {
 });
 
 //AFRICAN PAGE ROUTES
-
-
-
-
-// ── TOP RATED AFRICAN MOVIES ───────────────────────────────
+// ── TOP RATED AFRICAN MOVIES 
 app.get("/african/top-rated", async (req, res) => {
   try {
     const { country = "all", period = "year", page = 1 } = req.query;
@@ -1396,6 +1392,518 @@ app.get("/african/featured", async (req, res) => {
   } catch (err) {
     console.error(err.response?.data || err.message);
     res.status(500).json({ message: "Failed to fetch featured film" });
+  }
+});
+
+//SUBMISSION ROUTES
+
+// ── CHECK IF USER CAN SUBMIT (10+ movies) ─────────────────
+app.get("/african/can-submit", verifyToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT COUNT(*) FROM movies WHERE user_id = $1",
+      [req.user.id]
+    );
+    const count = parseInt(result.rows[0].count);
+    res.json({
+      canSubmit: count >= 10,
+      movieCount: count,
+      required: 10,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to check eligibility" });
+  }
+});
+
+// ── CHECK FOR TMDB DUPLICATE BEFORE SUBMISSION ─────────────
+app.get("/african/check-duplicate", verifyToken, async (req, res) => {
+  const { title, year } = req.query;
+  if (!title) return res.json({ found: false });
+
+  try {
+    // Check our own african_movies table first
+    const localCheck = await db.query(
+      `SELECT id, title, release_year, source, status
+       FROM african_movies
+       WHERE title ILIKE $1
+       AND ($2::integer IS NULL OR release_year = $2)`,
+      [title.trim(), year || null]
+    );
+
+    if (localCheck.rows.length > 0) {
+      return res.json({
+        found: true,
+        source: "local",
+        movie: localCheck.rows[0],
+      });
+    }
+
+    // Check TMDB
+    const tmdbRes = await axios.get(
+      "https://api.themoviedb.org/3/search/movie",
+      {
+        params: { query: title, year, include_adult: false, language: "en-US" },
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${process.env.TMDB_BEARER}`,
+        },
+      }
+    );
+
+    const tmdbResults = tmdbRes.data.results.slice(0, 3);
+
+    res.json({
+      found: tmdbResults.length > 0,
+      source: "tmdb",
+      movies: tmdbResults,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Duplicate check failed" });
+  }
+});
+
+// ── SUBMIT A COMMUNITY MOVIE ───────────────────────────────
+app.post("/african/submit", verifyToken, async (req, res) => {
+  try {
+    // Check eligibility — 10+ movies required
+    const countResult = await db.query(
+      "SELECT COUNT(*) FROM movies WHERE user_id = $1",
+      [req.user.id]
+    );
+    const movieCount = parseInt(countResult.rows[0].count);
+
+    if (movieCount < 10) {
+      return res.status(403).json({
+        message: `You need at least 10 movies in your list to submit. You have ${movieCount}.`,
+      });
+    }
+
+    const {
+      title,
+      original_title,
+      origin_country,
+      original_language,
+      release_year,
+      release_date,
+      poster_url,
+      backdrop_url,
+      synopsis,
+      director,
+      cast_list,
+      genres,
+      runtime,
+      trailer_url,
+      streaming_links,
+    } = req.body;
+
+    // Validate required fields
+    if (!title?.trim()) {
+      return res.status(400).json({ message: "Title is required" });
+    }
+    if (!origin_country) {
+      return res.status(400).json({ message: "Country of origin is required" });
+    }
+    if (!release_year) {
+      return res.status(400).json({ message: "Release year is required" });
+    }
+    if (!synopsis?.trim()) {
+      return res.status(400).json({ message: "Synopsis is required" });
+    }
+
+    // Check for duplicate submission from same user
+    const dupCheck = await db.query(
+      `SELECT id FROM african_submissions
+       WHERE submitted_by = $1
+       AND title ILIKE $2
+       AND status = 'pending'`,
+      [req.user.id, title.trim()]
+    );
+
+    if (dupCheck.rows.length > 0) {
+      return res.status(400).json({
+        message: "You already have a pending submission for this title",
+      });
+    }
+
+    const result = await db.query(
+      `INSERT INTO african_submissions (
+        title, original_title, origin_country, original_language,
+        release_year, release_date, poster_url, backdrop_url,
+        synopsis, director, cast_list, genres, runtime,
+        trailer_url, streaming_links, submitted_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      RETURNING id`,
+      [
+        title.trim(),
+        original_title?.trim() || null,
+        origin_country,
+        original_language || null,
+        parseInt(release_year),
+        release_date || null,
+        poster_url || null,
+        backdrop_url || null,
+        synopsis.trim(),
+        director?.trim() || null,
+        cast_list || null,
+        genres || null,
+        runtime ? parseInt(runtime) : null,
+        trailer_url?.trim() || null,
+        JSON.stringify(streaming_links || []),
+        req.user.id,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      submissionId: result.rows[0].id,
+      message: "Submission received! It will be reviewed by our team.",
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Submission failed" });
+  }
+});
+
+// ── GET USER'S OWN SUBMISSIONS ─────────────────────────────
+app.get("/african/my-submissions", verifyToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, title, origin_country, release_year, poster_url,
+              status, admin_notes, created_at
+       FROM african_submissions
+       WHERE submitted_by = $1
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load submissions" });
+  }
+});
+
+//ADMIN ROUTES
+
+// ── GET PENDING SUBMISSIONS (admin) ───────────────────────
+app.get("/admin/submissions", verifyAdmin, async (req, res) => {
+  try {
+    const { status = "pending", page = 0 } = req.query;
+    const limit = 20;
+    const offset = parseInt(page) * limit;
+
+    const result = await db.query(
+      `SELECT 
+        s.*,
+        u.username as submitter_username,
+        u.profile_pic as submitter_pic,
+        (SELECT COUNT(*) FROM movies WHERE user_id = s.submitted_by) as submitter_movie_count
+       FROM african_submissions s
+       LEFT JOIN users u ON s.submitted_by = u.id
+       WHERE s.status = $1
+       ORDER BY s.created_at ASC
+       LIMIT $2 OFFSET $3`,
+      [status, limit, offset]
+    );
+
+    const countResult = await db.query(
+      "SELECT COUNT(*) FROM african_submissions WHERE status = $1",
+      [status]
+    );
+
+    res.json({
+      submissions: result.rows,
+      total: parseInt(countResult.rows[0].count),
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load submissions" });
+  }
+});
+
+// ── GET SUBMISSION COUNTS BY STATUS (admin) ────────────────
+app.get("/admin/submissions/counts", verifyAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT status, COUNT(*) as count
+       FROM african_submissions
+       GROUP BY status`
+    );
+
+    const counts = { pending: 0, approved: 0, rejected: 0 };
+    result.rows.forEach(r => { counts[r.status] = parseInt(r.count); });
+
+    res.json(counts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load counts" });
+  }
+});
+
+// ── APPROVE SUBMISSION (admin) ─────────────────────────────
+app.put("/admin/submissions/:id/approve", verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { admin_notes } = req.body;
+
+  try {
+    // Get submission
+    const subResult = await db.query(
+      "SELECT * FROM african_submissions WHERE id = $1",
+      [id]
+    );
+
+    if (subResult.rows.length === 0) {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+
+    const sub = subResult.rows[0];
+
+    // Check not already processed
+    if (sub.status !== "pending") {
+      return res.status(400).json({
+        message: `Submission is already ${sub.status}`,
+      });
+    }
+
+    // Insert into african_movies
+    await db.query(
+      `INSERT INTO african_movies (
+        title, original_title, origin_country, original_language,
+        release_date, release_year, poster_path, backdrop_path,
+        synopsis, director, cast_list, genres, runtime,
+        trailer_url, streaming_links, source, status, submitted_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'community','approved',$16)
+      ON CONFLICT (tmdb_id) DO NOTHING`,
+      [
+        sub.title,
+        sub.original_title,
+        sub.origin_country,
+        sub.original_language,
+        sub.release_date,
+        sub.release_year,
+        sub.poster_url,
+        sub.backdrop_url,
+        sub.synopsis,
+        sub.director,
+        sub.cast_list,
+        sub.genres,
+        sub.runtime,
+        sub.trailer_url,
+        sub.streaming_links,
+        sub.submitted_by,
+      ]
+    );
+
+    // Update submission status
+    await db.query(
+      `UPDATE african_submissions
+       SET status = 'approved', admin_notes = $1,
+           reviewed_by = $2, reviewed_at = NOW()
+       WHERE id = $3`,
+      [admin_notes || null, req.user.id, id]
+    );
+
+    res.json({ success: true, message: "Submission approved and added to African movies" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to approve submission" });
+  }
+});
+
+// ── REJECT SUBMISSION (admin) ──────────────────────────────
+app.put("/admin/submissions/:id/reject", verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { admin_notes } = req.body;
+
+  try {
+    const result = await db.query(
+      "SELECT status FROM african_submissions WHERE id = $1",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+
+    if (result.rows[0].status !== "pending") {
+      return res.status(400).json({
+        message: `Submission is already ${result.rows[0].status}`,
+      });
+    }
+
+    await db.query(
+      `UPDATE african_submissions
+       SET status = 'rejected', admin_notes = $1,
+           reviewed_by = $2, reviewed_at = NOW()
+       WHERE id = $3`,
+      [admin_notes || null, req.user.id, id]
+    );
+
+    res.json({ success: true, message: "Submission rejected" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to reject submission" });
+  }
+});
+
+// ── GET ALL AFRICAN MOVIES (admin) ────────────────────────
+app.get("/admin/african-movies", verifyAdmin, async (req, res) => {
+  try {
+    const { source, country, page = 0 } = req.query;
+    const limit = 20;
+    const offset = parseInt(page) * limit;
+
+    let whereClause = "WHERE status = 'approved'";
+    const params = [];
+    let paramCount = 1;
+
+    if (source) {
+      whereClause += ` AND source = $${paramCount++}`;
+      params.push(source);
+    }
+    if (country) {
+      whereClause += ` AND origin_country = $${paramCount++}`;
+      params.push(country);
+    }
+
+    params.push(limit, offset);
+
+    const result = await db.query(
+      `SELECT id, title, origin_country, release_year,
+              poster_path, source, tmdb_rating, vote_count, created_at
+       FROM african_movies
+       ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
+      params
+    );
+
+    const countResult = await db.query(
+      `SELECT COUNT(*) FROM african_movies ${whereClause}`,
+      params.slice(0, -2)
+    );
+
+    res.json({
+      movies: result.rows,
+      total:  parseInt(countResult.rows[0].count),
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load movies" });
+  }
+});
+
+// ── EDIT AFRICAN MOVIE (admin) ────────────────────────────
+app.put("/admin/african-movies/:id", verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const {
+    title, original_title, origin_country, original_language,
+    release_year, release_date, poster_path, backdrop_path,
+    synopsis, director, cast_list, genres, runtime,
+    trailer_url, streaming_links,
+  } = req.body;
+
+  try {
+    await db.query(
+      `UPDATE african_movies SET
+        title = COALESCE($1, title),
+        original_title = COALESCE($2, original_title),
+        origin_country = COALESCE($3, origin_country),
+        original_language = COALESCE($4, original_language),
+        release_year = COALESCE($5, release_year),
+        release_date = COALESCE($6, release_date),
+        poster_path = COALESCE($7, poster_path),
+        backdrop_path = COALESCE($8, backdrop_path),
+        synopsis = COALESCE($9, synopsis),
+        director = COALESCE($10, director),
+        cast_list = COALESCE($11, cast_list),
+        genres = COALESCE($12, genres),
+        runtime = COALESCE($13, runtime),
+        trailer_url = COALESCE($14, trailer_url),
+        streaming_links = COALESCE($15, streaming_links)
+       WHERE id = $16`,
+      [
+        title, original_title, origin_country, original_language,
+        release_year, release_date, poster_path, backdrop_path,
+        synopsis, director, cast_list, genres, runtime,
+        trailer_url, streaming_links ? JSON.stringify(streaming_links) : null,
+        id,
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update movie" });
+  }
+});
+
+// ── DELETE AFRICAN MOVIE (admin) ──────────────────────────
+app.delete("/admin/african-movies/:id", verifyAdmin, async (req, res) => {
+  try {
+    await db.query(
+      "DELETE FROM african_movies WHERE id = $1",
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete movie" });
+  }
+});
+
+// ── DELETE SUBMISSION (admin) ─────────────────────────────
+app.delete("/admin/submissions/:id", verifyAdmin, async (req, res) => {
+  try {
+    await db.query(
+      "DELETE FROM african_submissions WHERE id = $1",
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete submission" });
+  }
+});
+
+// ── ADMIN STATS OVERVIEW ──────────────────────────────────
+app.get("/admin/stats", verifyAdmin, async (req, res) => {
+  try {
+    const [
+      totalMovies,
+      communityMovies,
+      tmdbMovies,
+      pendingSubmissions,
+      totalSubmissions,
+      totalUsers,
+    ] = await Promise.all([
+      db.query("SELECT COUNT(*) FROM african_movies WHERE status = 'approved'"),
+      db.query("SELECT COUNT(*) FROM african_movies WHERE source = 'community' AND status = 'approved'"),
+      db.query("SELECT COUNT(*) FROM african_movies WHERE source = 'tmdb'"),
+      db.query("SELECT COUNT(*) FROM african_submissions WHERE status = 'pending'"),
+      db.query("SELECT COUNT(*) FROM african_submissions"),
+      db.query("SELECT COUNT(*) FROM users"),
+    ]);
+
+    res.json({
+      totalMovies:       parseInt(totalMovies.rows[0].count),
+      communityMovies:   parseInt(communityMovies.rows[0].count),
+      tmdbMovies:        parseInt(tmdbMovies.rows[0].count),
+      pendingSubmissions:parseInt(pendingSubmissions.rows[0].count),
+      totalSubmissions:  parseInt(totalSubmissions.rows[0].count),
+      totalUsers:        parseInt(totalUsers.rows[0].count),
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load stats" });
   }
 });
 
