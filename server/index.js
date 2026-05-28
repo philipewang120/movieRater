@@ -33,7 +33,7 @@ const AFRICAN_COUNTRY_TABS = {
 };
 
 const allowedOrigins = [
-   "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app",
+   "https://elegant-axolotl-df6c24.netlify.app",
 ];
 
 app.set("trust proxy", 1);
@@ -497,7 +497,7 @@ app.get(
   "/auth/google/mymovies",
   passport.authenticate("google", {
     failureRedirect:
-      "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
+      "https://elegant-axolotl-df6c24.netlify.app/login",
     session: false,
   }),
   async (req, res) => {
@@ -522,13 +522,13 @@ app.get(
       );
 
       res.redirect(
-        `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`
+        `https://elegant-axolotl-df6c24.netlify.app/home?token=${token}`
       );
     } catch (err) {
       console.error(err);
 
       res.redirect(
-        "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login"
+        "https://elegant-axolotl-df6c24.netlify.app/login"
       );
     }
   }
@@ -544,7 +544,7 @@ app.get("/auth/facebook",
 app.get("/auth/facebook/callback",
   authLimiter,
   passport.authenticate("facebook", {
-    failureRedirect: "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
+    failureRedirect: "https://elegant-axolotl-df6c24.netlify.app/login",
     session: false
   }),
   async (req, res) => {
@@ -569,13 +569,13 @@ app.get("/auth/facebook/callback",
       );
 
       res.redirect(
-        `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`
+        `https://elegant-axolotl-df6c24.netlify.app/home?token=${token}`
       );
     } catch (err) {
       console.error(err);
 
       res.redirect(
-        "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login"
+        "https://elegant-axolotl-df6c24.netlify.app/login"
       );
     }
   }
@@ -588,7 +588,7 @@ app.get("/auth/github", authLimiter,
 
 app.get("/auth/github/mymovies",
   passport.authenticate("github", {
-    failureRedirect: "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login",
+    failureRedirect: "https://elegant-axolotl-df6c24.netlify.app/login",
     session: false
   }),
   async (req, res) => {
@@ -613,13 +613,13 @@ app.get("/auth/github/mymovies",
       );
 
       res.redirect(
-        `https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/home?token=${token}`
+        `https://elegant-axolotl-df6c24.netlify.app/home?token=${token}`
       );
     } catch (err) {
       console.error(err);
 
       res.redirect(
-        "https://africancinema-ihcro0hm5-philipe-wang-s-projects.vercel.app/login"
+        "https://elegant-axolotl-df6c24.netlify.app/login"
       );
     }
   }
