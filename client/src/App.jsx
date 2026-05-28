@@ -8,9 +8,13 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
+import Contact from "./pages/ContactPage";
+
+// v2 - african cinema routes
 import AfricanPage from "./pages/african/AfricanPage";
 import SubmitMoviePage from "./pages/african/SubmitMoviePage";
 import AdminDashboard  from "./pages/african/AdminDashboard";
+
 
 
 
@@ -29,6 +33,8 @@ function App() {
           <Route path="/african" element={<AfricanPage />} />
           <Route path="/african/submit" element={<SubmitMoviePage />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
         </Routes>
       </BrowserRouter>
     </AuthProvider>
