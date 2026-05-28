@@ -34,15 +34,8 @@ router.get("/african/top-rated", async (req, res) => {
       tmdbParams["primary_release_date.lte"] = now.toISOString().split("T")[0];
     }
 
-    // Use dedicated Nollywood fetcher for NG tab
-    let data;
-    if (country === "NG") {
-      data = await fetchNollywoodMovies(tmdbParams);
-    } else {
-      const countryCodes = getCountryCodes(country);
-      data = await fetchAfricanMovies(tmdbParams, countryCodes);
-    }
-
+    const countryCodes = getCountryCodes(country);
+   const data = await fetchAfricanMovies(tmdbParams, countryCodes);
     res.json(data);
 
   } catch (err) {
