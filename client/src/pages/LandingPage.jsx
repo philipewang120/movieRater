@@ -115,17 +115,19 @@ function LandingPage() {
     async function fetchMovies() {
       try {
         const res = await axios.get(
-          "https://api.themoviedb.org/3/discover/movie",
-          {
-            params: {
-              api_key: import.meta.env.VITE_TMDB_KEY,
-              language: "en-US",
-              sort_by: "popularity.desc",
-              include_adult: false,
-              page: Math.floor(Math.random() * 10) + 1,
-            },
-          }
-        );
+  "https://api.themoviedb.org/3/discover/movie",
+  {
+    withCredentials: false,
+
+    params: {
+      api_key: import.meta.env.VITE_TMDB_KEY,
+      language: "en-US",
+      sort_by: "popularity.desc",
+      include_adult: false,
+      page: Math.floor(Math.random() * 10) + 1,
+    },
+  }
+);
 
         const results = res.data.results || [];
 
