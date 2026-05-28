@@ -19,21 +19,42 @@ export async function fetchAfricanMovies(tmdbParams, countryCodes) {
     }),
   ]);
 
-  // Merge and deduplicate by id
-  const merged = [...r1.data.results, ...r2.data.results]
-    .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+  const africanSet = new Set(countryCodes.split("|")); // TMDB uses pipe-separated strings
 
-  // Sort based on query intent
+  // Merge + dedupe
+  let merged = [...r1.data.results, ...r2.data.results];
+
+  merged = merged.filter(
+    (movie, index, arr) =>
+      arr.findIndex((m) => m.id === movie.id) === index
+  );
+
+  // 🔥 STRICT AFRICA FILTER (this is the key fix)
+  merged = merged.filter((movie) => {
+    const origins = movie.origin_country || [];
+    const productionCountries = (movie.production_countries || []).map(
+      (c) => c.iso_3166_1
+    );
+
+    return (
+      origins.some((c) => africanSet.has(c)) ||
+      productionCountries.some((c) => africanSet.has(c))
+    );
+  });
+
+  // Sorting
   if (tmdbParams.sort_by === "vote_average.desc") {
     merged.sort((a, b) => b.vote_average - a.vote_average);
   } else {
-    merged.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
+    merged.sort(
+      (a, b) => new Date(b.release_date) - new Date(a.release_date)
+    );
   }
 
   return {
-    movies:        merged,
+    movies: merged,
     total_results: merged.length,
-    total_pages:   Math.max(r1.data.total_pages, r2.data.total_pages),
+    total_pages: Math.max(r1.data.total_pages, r2.data.total_pages),
   };
 }
 
