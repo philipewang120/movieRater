@@ -1,8 +1,7 @@
 
+function ContactPage(){
 
-function ContactPage() {
-
-<h2> this is your contact page</h2>
+<h1>this is your contact page</h1>
 }
 
 export default ContactPage;
