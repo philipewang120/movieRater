@@ -82,12 +82,11 @@ router.get("/african/featured", async (req, res) => {
     const featuredCountries = AFRICAN_COUNTRIES_ARRAY
       .filter(c => ["NG", "ZA", "EG", "CM", "GH", "KE", "MA"].includes(c))
       .join("|");
-    const language = userPrefersFrench ? "fr-FR" : "en-US";
 
     const tmdbParams = {
-      language,
+      language:                   "en-US",
       sort_by:                    "vote_average.desc",
-      "vote_count.gte":           5,
+      "vote_count.gte":           3,
       "primary_release_date.gte": `${now.getFullYear() - 1}-01-01`,
       include_adult:              false,
       page:                       1,
