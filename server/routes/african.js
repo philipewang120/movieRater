@@ -15,12 +15,13 @@ const router = express.Router();
 router.get("/african/top-rated", async (req, res) => {
   try {
     const { country = "all", period = "year", page = 1 } = req.query;
+    const countryCodes = getCountryCodes(country);
     const now = new Date();
 
     const tmdbParams = {
       language:         "en-US",
       sort_by:          "vote_average.desc",
-      "vote_count.gte": 5,
+      "vote_count.gte": 1,
       include_adult:    false,
       page,
     };
@@ -33,9 +34,9 @@ router.get("/african/top-rated", async (req, res) => {
       tmdbParams["primary_release_date.gte"] = `${now.getFullYear()}-01-01`;
       tmdbParams["primary_release_date.lte"] = now.toISOString().split("T")[0];
     }
+    // "all" period — no date filter
 
-    const countryCodes = getCountryCodes(country);
-   const data = await fetchAfricanMovies(tmdbParams, countryCodes);
+    const data = await fetchAfricanMovies(tmdbParams, countryCodes);
     res.json(data);
 
   } catch (err) {

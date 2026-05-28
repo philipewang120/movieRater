@@ -19,51 +19,24 @@ export async function fetchAfricanMovies(tmdbParams, countryCodes) {
     }),
   ]);
 
-  const africanSet = new Set(countryCodes.split("|")); // TMDB uses pipe-separated strings
+  // Merge and deduplicate by id
+  const merged = [...r1.data.results, ...r2.data.results]
+    .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
 
-  // Merge + dedupe
-  let merged = [...r1.data.results, ...r2.data.results];
-
-  merged = merged.filter(
-    (movie, index, arr) =>
-      arr.findIndex((m) => m.id === movie.id) === index
-  );
-
-  // 🔥 STRICT AFRICA FILTER (this is the key fix)
-  merged = merged.filter((movie) => {
-    const origins = movie.origin_country || [];
-    const productionCountries = (movie.production_countries || []).map(
-      (c) => c.iso_3166_1
-    );
-
-    return (
-      origins.some((c) => africanSet.has(c)) ||
-      productionCountries.some((c) => africanSet.has(c))
-    );
-  });
-
-  // Sorting
+  // Sort based on query intent
   if (tmdbParams.sort_by === "vote_average.desc") {
     merged.sort((a, b) => b.vote_average - a.vote_average);
   } else {
-    merged.sort(
-      (a, b) => new Date(b.release_date) - new Date(a.release_date)
-    );
+    merged.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
   }
 
   return {
-    movies: merged,
+    movies:        merged,
     total_results: merged.length,
-    total_pages: Math.max(r1.data.total_pages, r2.data.total_pages),
+    total_pages:   Math.max(r1.data.total_pages, r2.data.total_pages),
   };
 }
 
-// For Nigeria tab, use BOTH filters but then score results
-// A movie scores higher if:
-// - origin_country includes NG
-// - original_language is en (Nigerian English) or yo/ig/ha
-// - production_companies are Nigerian
-// - NOT primarily from US/UK/etc
 
 export async function fetchNollywoodMovies(tmdbParams) {
   const headers = {
