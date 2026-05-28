@@ -6,8 +6,7 @@ import db from "../db.js";
 
 import { verifyToken,} from "../middleware/auth.js";
 
-import { fetchAfricanMovies, fetchNollywoodMovies,
-  fetchCameroonMovies, getCountryCodes, } from "../helpers/africanHelpers.js";
+import { fetchAfricanMovies, getCountryCodes, } from "../helpers/africanHelpers.js";
 
 import {AFRICAN_COUNTRIES_ARRAY,} from "../config/africanCountries.js";
 
@@ -37,14 +36,12 @@ router.get("/african/top-rated", async (req, res) => {
 
     // Use dedicated Nollywood fetcher for NG tab
     let data;
- if (country === "NG") {
-  data = await fetchNollywoodMovies(tmdbParams);
-} else if (country === "CM") {
-  data = await fetchCameroonMovies(tmdbParams);
-} else {
-  const countryCodes = getCountryCodes(country);
-  data = await fetchAfricanMovies(tmdbParams, countryCodes);
-}
+    if (country === "NG") {
+      data = await fetchNollywoodMovies(tmdbParams);
+    } else {
+      const countryCodes = getCountryCodes(country);
+      data = await fetchAfricanMovies(tmdbParams, countryCodes);
+    }
 
     res.json(data);
 
@@ -59,29 +56,21 @@ router.get("/african/top-rated", async (req, res) => {
 router.get("/african/latest", async (req, res) => {
   try {
     const { country = "all", page = 1 } = req.query;
+    const countryCodes = getCountryCodes(country);
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixMonthsAgo = new Date(new Date().setMonth(new Date().getMonth() - 6));
 
     const tmdbParams = {
       language:                   "en-US",
       sort_by:                    "release_date.desc",
       "vote_count.gte":           1,
-      "primary_release_date.gte": thirtyDaysAgo.toISOString().split("T")[0],
+      "primary_release_date.gte": sixMonthsAgo.toISOString().split("T")[0],
       "primary_release_date.lte": now.toISOString().split("T")[0],
       include_adult:              false,
       page,
     };
 
-    let data;
-  if (country === "NG") {
-  data = await fetchNollywoodMovies(tmdbParams);
-} else if (country === "CM") {
-  data = await fetchCameroonMovies(tmdbParams);
-} else {
-  const countryCodes = getCountryCodes(country);
-  data = await fetchAfricanMovies(tmdbParams, countryCodes);
-}
-
+    const data = await fetchAfricanMovies(tmdbParams, countryCodes);
     res.json(data);
 
   } catch (err) {
