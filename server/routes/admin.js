@@ -7,7 +7,7 @@ const router = express.Router();
 //ADMIN ROUTES
 
 // ── GET PENDING SUBMISSIONS (admin) ───────────────────────
-router.get("/admin/submissions", verifyAdmin, async (req, res) => {
+router.get("/submissions", verifyAdmin, async (req, res) => {
   try {
     const { status = "pending", page = 0 } = req.query;
     const limit = 20;
@@ -44,7 +44,7 @@ router.get("/admin/submissions", verifyAdmin, async (req, res) => {
 });
 
 // ── GET SUBMISSION COUNTS BY STATUS (admin) ────────────────
-router.get("/admin/submissions/counts", verifyAdmin, async (req, res) => {
+router.get("/submissions/counts", verifyAdmin, async (req, res) => {
   try {
     const result = await db.query(
       `SELECT status, COUNT(*) as count
@@ -63,7 +63,7 @@ router.get("/admin/submissions/counts", verifyAdmin, async (req, res) => {
 });
 
 // ── APPROVE SUBMISSION (admin) ─────────────────────────────
-router.put("/admin/submissions/:id/approve", verifyAdmin, async (req, res) => {
+router.put("/submissions/:id/approve", verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { admin_notes } = req.body;
 
@@ -134,7 +134,7 @@ router.put("/admin/submissions/:id/approve", verifyAdmin, async (req, res) => {
 });
 
 // ── REJECT SUBMISSION (admin) ──────────────────────────────
-router.put("/admin/submissions/:id/reject", verifyAdmin, async (req, res) => {
+router.put("/submissions/:id/reject", verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { admin_notes } = req.body;
 
@@ -171,7 +171,7 @@ router.put("/admin/submissions/:id/reject", verifyAdmin, async (req, res) => {
 });
 
 // ── GET ALL AFRICAN MOVIES (admin) ────────────────────────
-router.get("/admin/african-movies", verifyAdmin, async (req, res) => {
+router.get("/african-movies", verifyAdmin, async (req, res) => {
   try {
     const { source, country, page = 0 } = req.query;
     const limit = 20;
@@ -219,7 +219,7 @@ router.get("/admin/african-movies", verifyAdmin, async (req, res) => {
 });
 
 // ── EDIT AFRICAN MOVIE (admin) ────────────────────────────
-router.put("/admin/african-movies/:id", verifyAdmin, async (req, res) => {
+router.put("/african-movies/:id", verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const {
     title, original_title, origin_country, original_language,
@@ -264,7 +264,7 @@ router.put("/admin/african-movies/:id", verifyAdmin, async (req, res) => {
 });
 
 // ── DELETE AFRICAN MOVIE (admin) ──────────────────────────
-router.delete("/admin/african-movies/:id", verifyAdmin, async (req, res) => {
+router.delete("/african-movies/:id", verifyAdmin, async (req, res) => {
   try {
     await db.query(
       "DELETE FROM african_movies WHERE id = $1",
@@ -278,7 +278,7 @@ router.delete("/admin/african-movies/:id", verifyAdmin, async (req, res) => {
 });
 
 // ── DELETE SUBMISSION (admin) ─────────────────────────────
-router.delete("/admin/submissions/:id", verifyAdmin, async (req, res) => {
+router.delete("/submissions/:id", verifyAdmin, async (req, res) => {
   try {
     await db.query(
       "DELETE FROM african_submissions WHERE id = $1",
@@ -292,7 +292,7 @@ router.delete("/admin/submissions/:id", verifyAdmin, async (req, res) => {
 });
 
 // ── ADMIN STATS OVERVIEW ──────────────────────────────────
-router.get("/admin/stats", verifyAdmin, async (req, res) => {
+router.get("/stats", verifyAdmin, async (req, res) => {
   try {
     const [
       totalMovies,
