@@ -9,6 +9,7 @@ import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import ContactPage from "./pages/ContactPage";
+import WrappedPage from "./pages/WrappedPage";
 
 
 // v2 - african cinema routes
@@ -26,6 +27,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<HomePage />} />
+          <Route path="/wrapped" element={<WrappedPage />} />
           <Route path="/add-movie" element={<AddMoviePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

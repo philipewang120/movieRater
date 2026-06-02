@@ -13,11 +13,16 @@ import {
   Logout, Search, Movie, Star, Instagram, Twitter, YouTube,
   OpenInNew, TrendingUp, Edit, Delete,
   ViewModule, ViewList, Sort,PersonSearch, Notifications,
-   NotificationsNone, Public, AdminPanelSettings,
+   NotificationsNone, Public, AdminPanelSettings, AutoAwesome,
 } from "@mui/icons-material";
 
 
 import "./HomePage.css";
+import {
+  getAutoWrapPeriod,
+  hasSeenWrapped,
+  shouldUsePreviousAnchor,
+} from "../utils/wrappedPeriod";
 
 /* ─── Google Fonts ─── */
 function useFonts() {
@@ -644,6 +649,7 @@ function HomePage() {
   const [totalMovies, setTotalMovies] = useState(0);
   const [avgRating,      setAvgRating]      = useState(0);
   const [topRatedTitle,  setTopRatedTitle]  = useState(null);
+  const [wrapBanner, setWrapBanner] = useState(null);
 
   const token = getToken();
  
@@ -767,6 +773,27 @@ useEffect(() => {
   fetchMovies(sortBy, 0, false);
 }, []);
 
+useEffect(() => {
+  const period = getAutoWrapPeriod();
+  if (!period) return;
+
+  const usePrev = shouldUsePreviousAnchor(period);
+  const anchorQ = usePrev ? "&anchor=previous" : "";
+
+  apiFetch(`/movies/wrapped?period=${period}${anchorQ}`)
+    .then((res) => (res?.ok ? res.json() : null))
+    .then((d) => {
+      if (d?.totalWatched > 0 && d.storageKey && !hasSeenWrapped(d.storageKey)) {
+        setWrapBanner({
+          period,
+          anchor: usePrev ? "previous" : "",
+          label: d.periodLabel,
+        });
+      }
+    })
+    .catch(() => {});
+}, []);
+
   async function handleLogout() {
     deleteToken();
     navigate("/login");
@@ -834,6 +861,41 @@ const initial    = email.charAt(0).toUpperCase();
     <Box sx={{ flex: 1 }} />
 
     <Stack direction="row" spacing={1} alignItems="center">
+
+      <Tooltip title="Your Movie Wrapped">
+        <Button
+          onClick={() => navigate("/wrapped")}
+          sx={{
+            background: "rgba(93,232,197,0.08)",
+            border: "1px solid rgba(93,232,197,0.25)",
+            borderRadius: "10px",
+            color: "var(--accent2)",
+            fontFamily: "var(--font-body)",
+            fontWeight: 600,
+            fontSize: 12,
+            textTransform: "none",
+            padding: "5px 12px",
+            whiteSpace: "nowrap",
+            display: { xs: "none", md: "flex" },
+            gap: "6px",
+            "&:hover": {
+              background: "rgba(93,232,197,0.15)",
+              borderColor: "rgba(93,232,197,0.45)",
+            },
+          }}
+          startIcon={<AutoAwesome sx={{ fontSize: 16 }} />}
+        >
+          Wrapped
+        </Button>
+      </Tooltip>
+
+      <Box sx={{ display: { xs: "flex", md: "none" } }}>
+        <Tooltip title="Your Movie Wrapped">
+          <button type="button" className="nav-icon-btn" onClick={() => navigate("/wrapped")}>
+            <AutoAwesome sx={{ fontSize: 22, color: "var(--accent2)" }} />
+          </button>
+        </Tooltip>
+      </Box>
 
       {/* African Cinema link */}
       <Tooltip title="African Cinema">
@@ -948,6 +1010,37 @@ const initial    = email.charAt(0).toUpperCase();
     </Stack>
   </Toolbar>
 </AppBar>
+
+        {wrapBanner && (
+          <div className="wrapped-prompt fade-up">
+            <div className="wrapped-prompt-glow" />
+            <AutoAwesome sx={{ color: "var(--accent2)", fontSize: 28, flexShrink: 0 }} />
+            <div className="wrapped-prompt-text">
+              <strong>Your {wrapBanner.label} is ready</strong>
+              <span>Share your top picks, worst takes, and stats.</span>
+            </div>
+            <Button
+              className="wrapped-prompt-btn"
+              onClick={() =>
+                navigate(
+                  `/wrapped?period=${wrapBanner.period}${
+                    wrapBanner.anchor ? "&anchor=previous" : ""
+                  }`
+                )
+              }
+            >
+              Open Wrapped
+            </Button>
+            <button
+              type="button"
+              className="wrapped-prompt-dismiss"
+              onClick={() => setWrapBanner(null)}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }}>
 

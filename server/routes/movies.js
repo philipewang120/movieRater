@@ -10,7 +10,57 @@ import {verifyToken,} from "../middleware/auth.js";
 
 import jwt from "jsonwebtoken";
 
+import {
+  getPeriodBounds,
+  getPreviousAnchorDate,
+} from "../helpers/wrappedHelpers.js";
+
 const router = express.Router();
+
+async function fetchTopGenre(movieIds) {
+  if (!movieIds.length || !process.env.TMDB_BEARER) return null;
+
+  const counts = {};
+  const unique = [...new Set(movieIds)].slice(0, 20);
+
+  await Promise.all(
+    unique.map(async (tmdbId) => {
+      try {
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/movie/${tmdbId}`,
+          {
+            headers: {
+              accept: "application/json",
+              Authorization: `Bearer ${process.env.TMDB_BEARER}`,
+            },
+          }
+        );
+        for (const g of response.data.genres || []) {
+          counts[g.name] = (counts[g.name] || 0) + 1;
+        }
+      } catch {
+        /* skip failed TMDB lookups */
+      }
+    })
+  );
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return sorted[0]?.[0] || null;
+}
+
+function mapMovieRow(row) {
+  return {
+    id: row.id,
+    tmdb_id: row.movie_id,
+    title: row.title,
+    poster_path: row.poster_path,
+    tmdb_rating: row.tmdb_rating,
+    my_rating: row.my_rating,
+    release_date: row.release_date,
+    watched_month: row.watched_month,
+    watched_year: row.watched_year,
+  };
+}
 
 
 //get all movies and data from db for specific user
@@ -160,6 +210,91 @@ router.get("/top-movies", async (req, res) => {
     });
   }
 });
+// User "wrapped" recap for week / month / year
+router.get("/movies/wrapped", verifyToken, apiLimiter, async (req, res) => {
+  try {
+    const period = ["week", "month", "year"].includes(req.query.period)
+      ? req.query.period
+      : "month";
+
+    const refDate =
+      req.query.anchor === "previous"
+        ? getPreviousAnchorDate(period, new Date())
+        : new Date();
+    const bounds = getPeriodBounds(period, refDate);
+    let rows = [];
+
+    if (bounds.useActivityWeek) {
+      const result = await db.query(
+        `SELECT DISTINCT m.*
+         FROM movies m
+         INNER JOIN activities a
+           ON a.movie_id = m.id AND a.user_id = m.user_id
+         WHERE m.user_id = $1
+           AND a.created_at >= $2
+           AND a.created_at < $3
+           AND a.type IN ('added', 'edited')
+         ORDER BY m.my_rating DESC NULLS LAST`,
+        [req.user.id, bounds.weekStart, bounds.weekEnd]
+      );
+      rows = result.rows;
+    } else if (period === "year") {
+      const result = await db.query(
+        `SELECT * FROM movies
+         WHERE user_id = $1 AND watched_year = $2
+         ORDER BY my_rating DESC NULLS LAST`,
+        [req.user.id, bounds.year]
+      );
+      rows = result.rows;
+    } else {
+      const result = await db.query(
+        `SELECT * FROM movies
+         WHERE user_id = $1 AND watched_year = $2 AND watched_month = $3
+         ORDER BY my_rating DESC NULLS LAST`,
+        [req.user.id, bounds.year, bounds.month]
+      );
+      rows = result.rows;
+    }
+
+    const rated = rows.filter((r) => r.my_rating != null);
+    const totalWatched = rows.length;
+    const avgRating =
+      rated.length > 0
+        ? Math.round(
+            rated.reduce((sum, r) => sum + Number(r.my_rating), 0) / rated.length
+          )
+        : 0;
+
+    const top5 = [...rated]
+      .sort((a, b) => Number(b.my_rating) - Number(a.my_rating))
+      .slice(0, 5)
+      .map(mapMovieRow);
+
+    const worst5 = [...rated]
+      .sort((a, b) => Number(a.my_rating) - Number(b.my_rating))
+      .slice(0, 5)
+      .map(mapMovieRow);
+
+    const topGenre = await fetchTopGenre(rows.map((r) => r.movie_id));
+
+    res.json({
+      period: bounds.period,
+      periodLabel: bounds.label,
+      shortLabel: bounds.shortLabel,
+      storageKey: bounds.storageKey,
+      totalWatched,
+      avgRating,
+      topGenre,
+      top5,
+      worst5,
+      username: req.user.username || req.user.email?.split("@")[0] || "you",
+    });
+  } catch (err) {
+    console.error("WRAPPED ERROR:", err);
+    res.status(500).json({ message: "Failed to load wrapped" });
+  }
+});
+
 //ping backend to avoid it going to sleep
 router.get("/health", (req, res) => res.json({ status: "ok" }));
 
