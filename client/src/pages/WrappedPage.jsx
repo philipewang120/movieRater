@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { Movie, Favorite, SentimentVeryDissatisfied } from "@mui/icons-material";
 import { apiFetch, getToken } from "../api";
 import logo from "../assets/logo.png";
@@ -158,15 +158,14 @@ function WrappedPage() {
     if (!node || downloading) return;
     setDownloading(true);
     try {
-      const canvas = await html2canvas(node, {
+      const dataUrl = await toPng(node, {
         backgroundColor: "#0f0f12",
-        scale: 2,
-        useCORS: true,
-        logging: false,
+        pixelRatio: 2,
+        cacheBust: true,
       });
       const link = document.createElement("a");
       link.download = `movie-rater-wrapped-${period}-${data?.storageKey || "share"}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
     } catch {
       alert("Could not generate image. Try again or use a screenshot.");
