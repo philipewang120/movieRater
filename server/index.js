@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const allowedOrigins = [
-  "wangmovierater.netlify.app",
+  "https://wangmovierater.netlify.app",
 ];
 
 app.set("trust proxy", 1);
