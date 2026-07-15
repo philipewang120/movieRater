@@ -12,12 +12,6 @@ import ContactPage from "./pages/ContactPage";
 import WrappedPage from "./pages/WrappedPage";
 
 
-// v2 - african cinema routes
-import AfricanPage from "./pages/african/AfricanPage";
-import SubmitMoviePage from "./pages/african/SubmitMoviePage";
-import AdminDashboard  from "./pages/african/AdminDashboard";
-
-
 
 
 function App() {
@@ -33,9 +27,6 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/african" element={<AfricanPage />} />
-          <Route path="/african/submit" element={<SubmitMoviePage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/contact" element={<ContactPage />} />
          
           

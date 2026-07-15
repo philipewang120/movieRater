@@ -13,7 +13,7 @@ import {
   Logout, Search, Movie, Star, Instagram, Twitter, YouTube,
   OpenInNew, TrendingUp, Edit, Delete,
   ViewModule, ViewList, Sort,PersonSearch, Notifications,
-   NotificationsNone, Public, AdminPanelSettings, AutoAwesome,
+   NotificationsNone, AutoAwesome,
 } from "@mui/icons-material";
 
 
@@ -656,7 +656,7 @@ function HomePage() {
   
 
 
-  let currentUser = null;
+let currentUser = null;
 if (token) {
   try { currentUser = JSON.parse(atob(token.split(".")[1])); } catch (_) {}
 }
@@ -837,7 +837,7 @@ const initial    = email.charAt(0).toUpperCase();
       <Box sx={{ minHeight: "100vh", bgcolor: "var(--ink)" }}>
 
         {/* NAVBAR */}
- <AppBar position="sticky" className="nav-bar" elevation={0}>
+  <AppBar position="sticky" className="nav-bar" elevation={0}>
   <Toolbar sx={{ px: { xs: 2, md: 4 }, gap: 2, minHeight: "68px !important" }}>
     
     {/* Logo */}
@@ -883,7 +883,7 @@ const initial    = email.charAt(0).toUpperCase();
               borderColor: "rgba(93,232,197,0.45)",
             },
           }}
-          startIcon={<AutoAwesome sx={{ fontSize: 16 }} />}
+          
         >
           Wrapped
         </Button>
@@ -897,46 +897,6 @@ const initial    = email.charAt(0).toUpperCase();
         </Tooltip>
       </Box>
 
-      {/* African Cinema link */}
-      <Tooltip title="African Cinema">
-        <Button
-          onClick={() => navigate("/african")}
-          sx={{
-            background: "rgba(232,197,71,0.08)",
-            border: "1px solid rgba(232,197,71,0.2)",
-            borderRadius: "10px",
-            color: "var(--accent)",
-            fontFamily: "var(--font-body)",
-            fontWeight: 600,
-            fontSize: 12,
-            textTransform: "none",
-            padding: "5px 12px",
-            whiteSpace: "nowrap",
-            display: { xs: "none", md: "flex" }, // hide on mobile
-            gap: "6px",
-            transition: "all 0.2s",
-            "&:hover": {
-              background: "rgba(232,197,71,0.15)",
-              borderColor: "rgba(232,197,71,0.4)",
-            },
-          }}
-        >
-          🌍 African Cinema
-        </Button>
-      </Tooltip>
-
-      {/* African Cinema icon — mobile only */}
-      <Tooltip title="African Cinema">
-        <button
-          className="nav-icon-btn"
-          onClick={() => navigate("/african")}
-          style={{ display: "flex" }}
-          sx={{ display: { xs: "flex", md: "none" } }}
-        >
-          <Public sx={{ fontSize: 22, color: "var(--accent)" }} />
-        </button>
-      </Tooltip>
-
       {/* User search icon */}
       <Tooltip title="Find users">
         <button className="nav-icon-btn" onClick={() => setShowSearch(true)}>
@@ -944,35 +904,6 @@ const initial    = email.charAt(0).toUpperCase();
         </button>
       </Tooltip>
 
-      {/* admin button visible to only admin and super admin */}
-      {currentUser?.role && ["admin", "superadmin"].includes(currentUser.role) && (
-  <Tooltip title="Admin Dashboard">
-    <button
-      className="nav-icon-btn"
-      onClick={() => navigate("/admin")}
-      style={{
-        background: "rgba(255,107,107,0.08)",
-        border: "1px solid rgba(255,107,107,0.15)",
-        borderRadius: "8px",
-        color: "#ff6b6b",
-        padding: "6px 10px",
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 12,
-        fontFamily: "var(--font-body)",
-        fontWeight: 600,
-        cursor: "pointer",
-        transition: "all 0.2s",
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,107,107,0.15)"}
-      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,107,107,0.08)"}
-    >
-      <AdminPanelSettings sx={{ fontSize: 18 }} />
-      <span style={{ display: "none" }} className="admin-label">Admin</span>
-    </button>
-  </Tooltip>
-)}
       {/* Notifications */}
       <NotificationsBell />
 

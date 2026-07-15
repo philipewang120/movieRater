@@ -15,7 +15,7 @@ import db from "../db.js";
 passport.use(
   "local",
   new LocalStrategy(
-    { usernameField: "email" }, // 👈 THIS FIXES EVERYTHING
+    { usernameField: "email" }, 
     async function verify(email, password, cb) {
       try {
         const result = await db.query(

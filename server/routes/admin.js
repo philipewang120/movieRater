@@ -88,33 +88,32 @@ router.put("/submissions/:id/approve", verifyAdmin, async (req, res) => {
     }
 
     // Insert into african_movies
-    await db.query(
-      `INSERT INTO african_movies (
-        title, original_title, origin_country, original_language,
-        release_date, release_year, poster_path, backdrop_path,
-        synopsis, director, cast_list, genres, runtime,
-        trailer_url, streaming_links, source, status, submitted_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'community','approved',$16)
-      ON CONFLICT (tmdb_id) DO NOTHING`,
-      [
-        sub.title,
-        sub.original_title,
-        sub.origin_country,
-        sub.original_language,
-        sub.release_date,
-        sub.release_year,
-        sub.poster_url,
-        sub.backdrop_url,
-        sub.synopsis,
-        sub.director,
-        sub.cast_list,
-        sub.genres,
-        sub.runtime,
-        sub.trailer_url,
-        sub.streaming_links,
-        sub.submitted_by,
-      ]
-    );
+await db.query(
+  `INSERT INTO african_movies (
+    title, original_title, origin_country, original_language,
+    release_date, release_year, poster_path, backdrop_path,
+    synopsis, director, cast_list, genres, runtime,
+    trailer_url, streaming_links, source, status, submitted_by
+  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'community','approved',$16)`,
+  [
+    sub.title,
+    sub.original_title,
+    sub.origin_country,
+    sub.original_language,
+    sub.release_date,
+    sub.release_year,
+    sub.poster_url,
+    sub.backdrop_url,
+    sub.synopsis,
+    sub.director,
+    sub.cast_list,
+    sub.genres,
+    sub.runtime,
+    sub.trailer_url,
+    sub.streaming_links,  
+    sub.submitted_by,
+  ]
+);
 
     // Update submission status
     await db.query(
