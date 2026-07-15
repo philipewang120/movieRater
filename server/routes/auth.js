@@ -36,7 +36,7 @@ router.get(
   "/auth/google/mymovies",
   passport.authenticate("google", {
     failureRedirect:
-      "https://elegant-axolotl-df6c24.netlify.app/login",
+      "https://wangmovierater.netlify.app/login",
     session: false,
   }),
   async (req, res) => {
@@ -61,13 +61,13 @@ router.get(
       );
 
       res.redirect(
-        `https://elegant-axolotl-df6c24.netlify.app/home?token=${token}`
+        `https://wangmovierater.netlify.app/home?token=${token}`
       );
     } catch (err) {
       console.error(err);
 
       res.redirect(
-        "https://elegant-axolotl-df6c24.netlify.app/login"
+        "https://wangmovierater.netlify.app/login"
       );
     }
   }
@@ -83,7 +83,7 @@ router.get("/auth/facebook",
 router.get("/auth/facebook/callback",
   authLimiter,
   passport.authenticate("facebook", {
-    failureRedirect: "https://elegant-axolotl-df6c24.netlify.app/login",
+    failureRedirect: "https://wangmovierater.netlify.app/login",
     session: false
   }),
   async (req, res) => {
@@ -108,13 +108,13 @@ router.get("/auth/facebook/callback",
       );
 
       res.redirect(
-        `https://elegant-axolotl-df6c24.netlify.app/home?token=${token}`
+        `https://wangmovierater.netlify.app/home?token=${token}`
       );
     } catch (err) {
       console.error(err);
 
       res.redirect(
-        "https://elegant-axolotl-df6c24.netlify.app/login"
+        "https://wangmovierater.netlify.app/login"
       );
     }
   }
@@ -127,7 +127,7 @@ router.get("/auth/github", authLimiter,
 
 router.get("/auth/github/mymovies",
   passport.authenticate("github", {
-    failureRedirect: "https://elegant-axolotl-df6c24.netlify.app/login",
+    failureRedirect: "https://wangmovierater.netlify.app/login",
     session: false
   }),
   async (req, res) => {
@@ -152,13 +152,13 @@ router.get("/auth/github/mymovies",
       );
 
       res.redirect(
-        `https://elegant-axolotl-df6c24.netlify.app/home?token=${token}`
+        `https://wangmovierater.netlify.app/home?token=${token}`
       );
     } catch (err) {
       console.error(err);
 
       res.redirect(
-        "https://elegant-axolotl-df6c24.netlify.app/login"
+        "https://wangmovierater.netlify.app/login"
       );
     }
   }
